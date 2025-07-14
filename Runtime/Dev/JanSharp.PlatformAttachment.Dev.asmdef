@@ -1,0 +1,22 @@
+{
+    "name": "JanSharp.PlatformAttachment.Dev",
+    "rootNamespace": "",
+    "references": [
+        "JanSharp.PlatformAttachment",
+        "JanSharp.Common",
+        "UdonSharp.Runtime",
+        "Unity.TextMeshPro",
+        "VRC.SDK3",
+        "VRC.SDKBase",
+        "VRC.Udon"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
