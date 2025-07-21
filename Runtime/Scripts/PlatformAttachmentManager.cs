@@ -27,6 +27,8 @@ namespace JanSharp
         // the current frame's velocity is 70%, the prev velocity is 30%. And it repeats like that
         private const float AdditionalVelocityNewWeight = 0.35f;
 
+        private bool immobilized;
+
         private void Start()
         {
             localPlayer = Networking.LocalPlayer;
@@ -78,6 +80,8 @@ namespace JanSharp
             prevPlatform = null;
             naturalGripPreventionCollider.gameObject.SetActive(false);
             localPlayer.SetVelocity(localPlayer.GetVelocity() + additionalVelocity);
+            immobilized = false;
+            localPlayer.Immobilize(immobilized);
         }
 
         private void ApplyPlatformMovement()
@@ -85,12 +89,16 @@ namespace JanSharp
             Vector3 positionDiff = prevPlatform.position + prevPlatform.TransformDirection(prevLocalPos) - prevPlayerPos;
             Quaternion platformRotation = prevPlatform.rotation;
             Quaternion rotationDiff = ProjectOntoYPlane(Quaternion.Inverse(prevPlatformRotation) * platformRotation);
+            // TeleportPlayerAlignedCorrectiveHead(localPlayerPosition + positionDiff, rotationDiff, lerpOnRemote: true);
             RoomAlignedTeleport(localPlayerPosition + positionDiff, localPlayer.GetRotation() * rotationDiff, lerpOnRemote: true);
 
             prevPlayerPos = localPlayer.GetPosition();
             additionalVelocity = (positionDiff / Time.deltaTime) * AdditionalVelocityNewWeight + (additionalVelocity * (1f - AdditionalVelocityNewWeight));
             prevLocalPos = prevPlatform.InverseTransformDirection(prevPlayerPos - prevPlatform.position);
             prevPlatformRotation = platformRotation;
+
+            immobilized = !immobilized;
+            // localPlayer.Immobilize(immobilized);
         }
 
         /// <summary>Handles quaternions where their forward vector is pointing straight up or down.</summary>
@@ -103,6 +111,16 @@ namespace JanSharp
             return projectedForward == Vector3.zero // Facing straight up or down?
                 ? Quaternion.LookRotation(rotation * Vector3.down) // Imagine a head facing staring up. The chin is down.
                 : Quaternion.LookRotation(projectedForward.normalized);
+        }
+
+        private void TeleportPlayerAlignedCorrectiveHead(Vector3 teleportPosition, Quaternion rotationDiff, bool lerpOnRemote)
+        {
+            Quaternion playerRotation = localPlayer.GetRotation();
+            Quaternion preHeadRotation = ProjectOntoYPlane(localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation);
+            localPlayer.TeleportTo(teleportPosition, playerRotation, VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote);
+            Quaternion postHeadRotation = ProjectOntoYPlane(localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation);
+            Quaternion headRotationOffset = Quaternion.Inverse(postHeadRotation) * preHeadRotation;
+            localPlayer.TeleportTo(teleportPosition, headRotationOffset * playerRotation * rotationDiff, VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote);
         }
 
         /// <summary>
