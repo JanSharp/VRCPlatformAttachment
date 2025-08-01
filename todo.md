@@ -6,3 +6,4 @@
     - [ ] make a script that intentionally lowers frame rate using busy waits and stopwatches
 - [ ] find a way to prevent ik drift (legs sliding diagonally behind remote players) for everybody who isn't in full body
   - only option I've seen so far is using the immobilize flag. That would mean manually implementing all movement while being attached to a platform
+- [ ] testing with 2 people in desktop works just fine, in live session with 40+ people it broke
