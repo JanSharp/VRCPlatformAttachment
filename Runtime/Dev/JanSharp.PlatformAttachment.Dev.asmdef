@@ -4,6 +4,7 @@
     "references": [
         "JanSharp.PlatformAttachment",
         "JanSharp.Common",
+        "JanSharp.GenericValueEditor",
         "UdonSharp.Runtime",
         "Unity.TextMeshPro",
         "VRC.SDK3",
