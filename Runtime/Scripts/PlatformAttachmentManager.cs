@@ -6,7 +6,7 @@ namespace JanSharp
 {
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     [SingletonScript("bbe525fe8f53b070a9a6a76da1cf85ad")] // Runtime/Prefabs/PlatformAttachmentManager.prefab
-    public class PlatformAttachmentManager : UdonSharpBehaviour
+    public partial class PlatformAttachmentManager : UdonSharpBehaviour
     {
         public LayerMask layersToAttachTo;
         [Header("Internal")]
@@ -159,46 +159,6 @@ namespace JanSharp
             Quaternion postHeadRotation = ProjectOntoYPlane(localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation);
             Quaternion headRotationOffset = Quaternion.Inverse(postHeadRotation) * preHeadRotation;
             localPlayer.TeleportTo(teleportPosition, headRotationOffset * playerRotation * rotationDiff, VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote);
-        }
-
-        /// <summary>
-        /// <para>See: https://gist.github.com/Phasedragon/5b76edfb8723b6bc4a49cd43adde5d3d</para>
-        /// </summary>
-        /// <param name="teleportRot">Gets projected onto the Y plane.</param>
-        public void RoomAlignedTeleport(Vector3 teleportPos, Quaternion teleportRot, bool lerpOnRemote)
-        {
-#if UNITY_EDITOR
-            // Skip process and Exit early for ClientSim since there is no play space to orient.
-            localPlayer.TeleportTo(teleportPos, teleportRot);
-#else
-            // // This is absolutely not how you are supposed to use euler angles. Converting a quaternion to
-            // // euler angles, taking some component of that and then converting that back to a quaternion is
-            // // asking for trouble, and that is exactly what is happening here. However through some miracle
-            // // this case actually behaves correctly, and I (JanSharp) believe that it's related to the order
-            // // that the euler axis get processed by Unity. Supposedly it is YXZ around local axis and ZXY
-            // // around world axis. So maybe these functions here use YXZ and that's why it works.
-            // teleportRot = Quaternion.Euler(0, teleportRot.eulerAngles.y, 0);
-
-            // Get player pos/rot
-            Vector3 playerPos = localPlayerPosition;
-            Quaternion invPlayerRot = Quaternion.Inverse(localPlayer.GetRotation());
-
-            // Get origin pos/rot
-            VRCPlayerApi.TrackingData origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-
-            // Subtract player from origin in order to get the offset from the player to the origin
-            // offset = origin - player
-            Vector3 offsetPos = origin.position - playerPos;
-            Quaternion offsetRot = invPlayerRot * origin.rotation;
-
-            // Add the offset onto the destination in order to construct a pos/rot of where your origin would be in order to put the player at the destination
-            // target = destination + offset
-            localPlayer.TeleportTo(
-                teleportPos + teleportRot * invPlayerRot * offsetPos,
-                teleportRot * offsetRot,
-                VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint,
-                lerpOnRemote);
-#endif
         }
     }
 }
