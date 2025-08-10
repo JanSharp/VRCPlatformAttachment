@@ -45,7 +45,12 @@ namespace JanSharp
             this.attachedPlatform = attachedPlatform.transform;
             // stationPlayerPosition.SetParent(this.attachedPlatform, worldPositionStays: false);
             stationPlayerPosition.SetPositionAndRotation(player.GetPosition(), player.GetRotation());
+            // prevDesiredRotation = GetProjectedHeadRotation();
             station.UseStation(player);
+            prevOrigin = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            prevHead = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
+            prevPosition = player.GetPosition();
+            prevRotation = player.GetRotation();
             // stationPlayerPosition.SetPositionAndRotation(this.attachedPlatform.position, this.attachedPlatform.rotation);
             RequestSerialization();
             if (isSyncLoopRunning)
@@ -55,15 +60,220 @@ namespace JanSharp
             SendCustomEventDelayedSeconds(nameof(SyncLoop), SyncLoopInterval);
         }
 
-        public void TeleportPlayer(Vector3 position, Quaternion rotation)
+        /// <summary>Handles quaternions where their forward vector is pointing straight up or down.</summary>
+        /// <returns>A quaternion purely rotating around the Y axis. If the given <paramref name="rotation"/>
+        /// was upside down, the result does not reflect as such. The "up" of the resulting rotation is always
+        /// equal to <see cref="Vector3.up"/>.</returns>
+        public static Quaternion ProjectOntoYPlane(Quaternion rotation)
         {
-            // station.PlayerMobility = VRCStation.Mobility.ImmobilizeForVehicle;
-            // stationPlayerPosition.SetPositionAndRotation(this.attachedPlatform.position, this.attachedPlatform.rotation);
-            // station.PlayerMobility = VRCStation.Mobility.Mobile;
+            Vector3 projectedForward = Vector3.ProjectOnPlane(rotation * Vector3.forward, Vector3.up);
+            return projectedForward == Vector3.zero // Facing straight up or down?
+                ? Quaternion.LookRotation(rotation * Vector3.down) // Imagine a head facing staring up. The chin is down.
+                : Quaternion.LookRotation(projectedForward.normalized);
+        }
+
+        private Quaternion GetProjectedHeadRotation()
+        {
+            return ProjectOntoYPlane(player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation);
+        }
+
+        private VRCPlayerApi.TrackingData prevOrigin;
+        private VRCPlayerApi.TrackingData prevHead;
+        private Vector3 prevPosition;
+        private Quaternion prevRotation;
+        // private Quaternion prevDesiredRotation;
+
+        public void TeleportPlayer(Vector3 position, Quaternion rotation, Vector3 positionDiff, Quaternion rotationDiff)
+        {
+            #region Attempts
+
+            // // This doesn't prevent looking left and right, but it causes unintentional additional head rotation,
+            // // resulting in continuous spinning when tilting the head and looking down or up.
+            // manager.RoomAlignedTeleport(position, rotation, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, rotation * Quaternion.Inverse(rotation) * player.GetRotation());
+            // station.UseStation(player);
+
+            // // Nope.
+            // manager.RoomAlignedTeleport(position, player.GetRotation(), lerpOnRemote: true);
+            // Quaternion toUndo = Quaternion.Inverse(player.GetRotation());
+            // manager.RoomAlignedTeleport(position, rotation, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, toUndo * rotation);
+            // station.UseStation(player);
+
+            // // Exact same spinning behavior as the first one
+            // Quaternion originalRotation = player.GetRotation();
+            // manager.RoomAlignedTeleport(position, originalRotation, lerpOnRemote: true);
+            // Quaternion toUndo = Quaternion.Inverse(player.GetRotation());
+            // // manager.RoomAlignedTeleport(position, rotation, lerpOnRemote: true); // Nope, makes you no longer move with the platform.
+            // stationPlayerPosition.SetPositionAndRotation(position, Quaternion.Inverse(toUndo * originalRotation) * rotation);
+            // station.UseStation(player);
+
+            // // Still same spinning issue.
+            // manager.RoomAlignedTeleport(position, rotation, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, ProjectOntoYPlane(rotation * Quaternion.Inverse(rotation)) * player.GetRotation());
+            // station.UseStation(player);
+
+            // // Still same spinning issue, but this time it does move along with the platform even with that second teleport
+            // Quaternion originalRotation = player.GetRotation();
+            // manager.RoomAlignedTeleport(player.GetPosition(), originalRotation, lerpOnRemote: true);
+            // Quaternion toUndo = Quaternion.Inverse(player.GetRotation());
+            // manager.RoomAlignedTeleport(position, rotation, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, Quaternion.Inverse(toUndo * originalRotation) * rotation);
+            // station.UseStation(player);
+
+            // // Still spinning, but also when moving around, not just looking around. It's weird.
+            // Vector3 originalPosition = player.GetPosition();
+            // manager.RoomAlignedTeleport(position, rotation, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, player.GetRotation());
+            // station.UseStation(player);
+            // Quaternion rotationDiff = rotation * Quaternion.Inverse(player.GetRotation());
+            // manager.RoomAlignedTeleport(originalPosition, rotation * rotationDiff, lerpOnRemote: true);
+            // station.UseStation(player);
+
+            // // Same as above.
+            // Vector3 originalPosition = player.GetPosition();
+            // manager.RoomAlignedTeleport(position, rotation, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, GetProjectedHeadRotation());
+            // station.UseStation(player);
+            // Quaternion rotationDiff = rotation * Quaternion.Inverse(GetProjectedHeadRotation());
+            // manager.RoomAlignedTeleport(originalPosition, rotation * rotationDiff, lerpOnRemote: true);
+            // station.UseStation(player);
+
+            // // Same as before, the teleport truly does make the player exist the station instantly. No funny business there.
+            // manager.RoomAlignedTeleport(position, rotation, lerpOnRemote: true);
+            // station.ExitStation(player);
+            // stationPlayerPosition.SetPositionAndRotation(position, player.GetRotation());
+            // station.UseStation(player);
+
+            // // Random slow rotation while standing on a platform
+            // // Head lock
+            // // And spin when tilted
+            // // Worst of all worlds!
+            // Vector3 originalPosition = player.GetPosition();
+            // Quaternion originalRotation = player.GetRotation();
+            // station.ExitStation(player);
+            // Quaternion rotationDiff = Quaternion.Inverse(originalRotation) * player.GetRotation();
+            // stationPlayerPosition.SetPositionAndRotation(position, rotation);
+            // station.UseStation(player);
+            // manager.RoomAlignedTeleport(originalPosition, rotation, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, player.GetRotation() * Quaternion.Inverse(rotationDiff));
+            // station.UseStation(player);
+
+            // // Random slow rotation while standing on a platform
+            // // No Head lock!
+            // // And spin when tilted
+            // // Slightly better!
+            // Vector3 originalPosition = player.GetPosition();
+            // Quaternion originalRotation = GetProjectedHeadRotation();
+            // station.ExitStation(player);
+            // Quaternion rotationDiff = Quaternion.Inverse(originalRotation) * GetProjectedHeadRotation();
+            // stationPlayerPosition.SetPositionAndRotation(position, rotation);
+            // station.UseStation(player);
+            // manager.RoomAlignedTeleport(originalPosition, rotation, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, GetProjectedHeadRotation() * Quaternion.Inverse(rotationDiff));
+            // station.UseStation(player);
+
+            // // Still no difference
+            // Vector3 originalPosition = player.GetPosition();
+            // player.TeleportTo(position, player.GetRotation(), VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, player.GetRotation());
+            // station.UseStation(player);
+            // Quaternion rotationDiff = rotation * Quaternion.Inverse(player.GetRotation());
+            // player.TeleportTo(originalPosition, rotation * rotationDiff, VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: true);
+            // station.UseStation(player);
+
+            // // Still same as the first one.
+            // player.TeleportTo(position, rotation, VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, GetProjectedHeadRotation());
+            // station.UseStation(player);
+
+            // // No head lock, but still spinning.
+            // Quaternion preRotation = GetProjectedHeadRotation();
+            // station.ExitStation(player);
+            // Quaternion postRotation = GetProjectedHeadRotation();
+            // Quaternion rotationDiff = Quaternion.Inverse(postRotation) * preRotation;
+            // manager.RoomAlignedTeleport(position, rotation, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, GetProjectedHeadRotation() * rotationDiff);
+            // station.UseStation(player);
+
+            // // You can still turn you head sometimes and it feels as though it initiates a spin too, but it
+            // // pushes the player off the platform too soon to be able to tell.
+            // station.ExitStation(player);
+            // manager.RoomAlignedTeleport(position, Quaternion.identity, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, Quaternion.identity);
+            // station.UseStation(player);
+
+            // // Makes you no longer move with the platform
+            // station.ExitStation(player);
+            // manager.RoomAlignedTeleport(position, Quaternion.identity, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, Quaternion.identity);
+            // station.UseStation(player);
+            // station.ExitStation(player);
+            // manager.RoomAlignedTeleport(position, Quaternion.identity, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, Quaternion.identity);
+            // station.UseStation(player);
+            // station.ExitStation(player);
+            // manager.RoomAlignedTeleport(position, Quaternion.identity, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, Quaternion.identity);
+            // station.UseStation(player);
+            // station.ExitStation(player);
+            // manager.RoomAlignedTeleport(position, Quaternion.identity, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, Quaternion.identity);
+            // station.UseStation(player);
+
+            // // Don't remember, but also broken, probably in the same way as all the rest.
+            // station.ExitStation(player);
+            // Quaternion headMovementSinceLastFrame = Quaternion.Inverse(rotationLastFrame) * GetProjectedHeadRotation();
+            // desiredRotationLastFrame = desiredRotationLastFrame * rotationDiff * headMovementSinceLastFrame;
+            // manager.RoomAlignedTeleport(position, desiredRotationLastFrame, lerpOnRemote: true);
+            // stationPlayerPosition.SetPositionAndRotation(position, desiredRotationLastFrame);
+            // station.UseStation(player);
+            // rotationLastFrame = GetProjectedHeadRotation();
+
+            // Misc.
+
+            // station.ExitStation(player);
+
+            // // station.PlayerMobility = VRCStation.Mobility.ImmobilizeForVehicle;
+            // // stationPlayerPosition.SetPositionAndRotation(this.attachedPlatform.position, this.attachedPlatform.rotation);
+            // // station.PlayerMobility = VRCStation.Mobility.Mobile;
+            // station.ExitStation(player);
+            // manager.RoomAlignedTeleport(position, rotation, lerpOnRemote: true);
+            // Quaternion playerRotation = player.GetRotation();
+            // Quaternion preHeadRotation = ProjectOntoYPlane(player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation);
+            // stationPlayerPosition.SetPositionAndRotation(position, playerRotation);
+            // station.UseStation(player);
+            // station.ExitStation(player);
+            // Quaternion postHeadRotation = ProjectOntoYPlane(player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation);
+            // Quaternion headRotationOffset = Quaternion.Inverse(postHeadRotation) * preHeadRotation;
+            // manager.RoomAlignedTeleport(position, Quaternion.Inverse(headRotationOffset) * rotation, lerpOnRemote: true);
+            // // stationPlayerPosition.SetPositionAndRotation(position, headRotationOffset * playerRotation);
+            // // // station.stationEnterPlayerLocation = null;
+            // station.UseStation(player);
+            // // // station.stationEnterPlayerLocation = stationPlayerPosition;
+
+            #endregion
+
+            var origin = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            var head = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
+
+            Quaternion prevOffset = Quaternion.Inverse(prevOrigin.rotation) * prevHead.rotation;
+            Quaternion offset = Quaternion.Inverse(origin.rotation) * head.rotation;
+            Quaternion headMovement = Quaternion.Inverse(prevOffset) * offset;
+
+            prevPosition = prevPosition +
+                prevOrigin.rotation * (Quaternion.Inverse(origin.rotation) * (head.position - origin.position)
+                    - Quaternion.Inverse(prevOrigin.rotation) * (prevHead.position - prevOrigin.position))
+                + positionDiff;
+            prevRotation = prevRotation * ProjectOntoYPlane(headMovement) * rotationDiff;
+
             station.ExitStation(player);
-            manager.RoomAlignedTeleport(position, rotation, lerpOnRemote: true);
-            stationPlayerPosition.SetPositionAndRotation(position, rotation);
+            manager.RoomAlignedTeleport(prevPosition, prevRotation, lerpOnRemote: true);
+            stationPlayerPosition.SetPositionAndRotation(prevPosition, prevRotation);
             station.UseStation(player);
+
+            prevOrigin = origin;
+            prevHead = head;
         }
 
         public void StopSyncLoop()

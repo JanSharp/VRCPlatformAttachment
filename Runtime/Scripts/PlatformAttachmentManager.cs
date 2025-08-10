@@ -8,9 +8,11 @@ namespace JanSharp
     [SingletonScript("bbe525fe8f53b070a9a6a76da1cf85ad")] // Runtime/Prefabs/PlatformAttachmentManager.prefab
     public partial class PlatformAttachmentManager : UdonSharpBehaviour
     {
+        [HideInInspector][SerializeField][SingletonReference] QuickDebugUI qd;
         public LayerMask layersToAttachTo;
         [Header("Internal")]
         public Transform naturalGripPreventionCollider;
+        public Transform originDebug;
 
         private VRCPlayerApi localPlayer;
         private AttachedRemotePlayer localAttachedPlayerSync;
@@ -63,6 +65,11 @@ namespace JanSharp
         [OnTrulyPostLateUpdate]
         public void OnTrulyPostLateUpdate()
         {
+            var origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            originDebug.SetPositionAndRotation(origin.position, origin.rotation);
+            qd.ShowForOneFrame(this, "Origin Position", origin.position.ToString("f3"));
+            qd.ShowForOneFrame(this, "Origin Rotation", origin.rotation.eulerAngles.ToString("f3"));
+
             localPlayerPosition = localPlayer.GetPosition();
             float radius = LocalPlayerCapsule.GetRadius();
             Transform platform = null;
@@ -127,7 +134,7 @@ namespace JanSharp
             Quaternion platformRotation = prevPlatform.rotation;
             Quaternion rotationDiff = ProjectOntoYPlane(Quaternion.Inverse(prevPlatformRotation) * platformRotation);
             // TeleportPlayerAlignedCorrectiveHead(localPlayerPosition + positionDiff, rotationDiff, lerpOnRemote: true);
-            localAttachedPlayerSync.TeleportPlayer(localPlayerPosition + positionDiff, localPlayer.GetRotation() * rotationDiff);
+            localAttachedPlayerSync.TeleportPlayer(localPlayerPosition + positionDiff, localPlayer.GetRotation() * rotationDiff, positionDiff, rotationDiff);
             // RoomAlignedTeleport(localPlayerPosition + positionDiff, localPlayer.GetRotation() * rotationDiff, lerpOnRemote: true);
 
             prevPlayerPos = localPlayer.GetPosition();

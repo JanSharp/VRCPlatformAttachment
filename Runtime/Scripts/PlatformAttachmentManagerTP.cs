@@ -85,13 +85,13 @@ namespace JanSharp
             // Skip process and Exit early for ClientSim since there is no play space to orient.
             localPlayer.TeleportTo(teleportPos, teleportRot);
 #else
-            // // This is absolutely not how you are supposed to use euler angles. Converting a quaternion to
-            // // euler angles, taking some component of that and then converting that back to a quaternion is
-            // // asking for trouble, and that is exactly what is happening here. However through some miracle
-            // // this case actually behaves correctly, and I (JanSharp) believe that it's related to the order
-            // // that the euler axis get processed by Unity. Supposedly it is YXZ around local axis and ZXY
-            // // around world axis. So maybe these functions here use YXZ and that's why it works.
-            // teleportRot = Quaternion.Euler(0, teleportRot.eulerAngles.y, 0);
+            // This is absolutely not how you are supposed to use euler angles. Converting a quaternion to
+            // euler angles, taking some component of that and then converting that back to a quaternion is
+            // asking for trouble, and that is exactly what is happening here. However through some miracle
+            // this case actually behaves correctly, and I (JanSharp) believe that it's related to the order
+            // that the euler axis get processed by Unity. Supposedly it is YXZ around local axis and ZXY
+            // around world axis. So maybe these functions here use YXZ and that's why it works.
+            teleportRot = Quaternion.Euler(0, teleportRot.eulerAngles.y, 0);
 
             // Get player pos/rot
             Vector3 playerPos = localPlayerPosition;
