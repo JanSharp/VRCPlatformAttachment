@@ -13,15 +13,22 @@ namespace JanSharp
         public Transform naturalGripPreventionCollider;
 
         private VRCPlayerApi localPlayer;
+        private AttachedRemotePlayer localAttachedPlayerSync;
         /// <summary>
         /// <para>Set at the beginning of <see cref="OnTrulyPostLateUpdate"/>.</para>
         /// </summary>
         private Vector3 localPlayerPosition;
 
+        [BuildTimeIdAssignment(nameof(allPlatformIds), nameof(highestPlatformId))]
+        [HideInInspector][SerializeField] private AttachablePlatform[] allPlatforms;
+        [HideInInspector][SerializeField] private uint[] allPlatformIds;
+        [HideInInspector][SerializeField] private uint highestPlatformId;
+
         private bool isAttached;
         private Vector3 prevPlayerPos;
         private Vector3 prevLocalPos;
         private Transform prevPlatform;
+        private AttachablePlatform prevAttachablePlatform;
         private Quaternion prevPlatformRotation;
         private Vector3 additionalVelocity;
         // the current frame's velocity is 70%, the prev velocity is 30%. And it repeats like that
@@ -32,6 +39,25 @@ namespace JanSharp
         private void Start()
         {
             localPlayer = Networking.LocalPlayer;
+        }
+
+        public void SetLocalAttachedPlayerSync(AttachedRemotePlayer localAttachedPlayerSync)
+        {
+            this.localAttachedPlayerSync = localAttachedPlayerSync;
+            if (isAttached)
+                localAttachedPlayerSync.BeginSyncLoop(prevAttachablePlatform);
+        }
+
+        public AttachablePlatform GetPlatformFromId(uint id)
+        {
+            int index = System.Array.BinarySearch(allPlatformIds, id);
+            return index < 0 ? null : allPlatforms[index];
+        }
+
+        public uint GetIdFromPlatform(AttachablePlatform platform)
+        {
+            int index = System.Array.IndexOf(allPlatforms, platform);
+            return index < 0 ? 0u : allPlatformIds[index];
         }
 
         [OnTrulyPostLateUpdate]
@@ -49,7 +75,7 @@ namespace JanSharp
                 layersToAttachTo)) // QueryTriggerInteraction.UseGlobal
             {
                 platform = hit.transform;
-                naturalGripPreventionCollider.position = hit.point;
+                naturalGripPreventionCollider.position = hit.point; // TODO: Make this tilt.
             }
 
             if (isAttached && platform == prevPlatform)
@@ -65,23 +91,34 @@ namespace JanSharp
 
         private void Attach(Transform platform)
         {
+            AttachablePlatform attachablePlatform = platform.GetComponent<AttachablePlatform>();
+            if (attachablePlatform == null)
+                return;
+            if (attachablePlatform.id == 0u)
+                attachablePlatform.id = GetIdFromPlatform(attachablePlatform);
             isAttached = true;
             prevPlayerPos = localPlayer.GetPosition();
             prevPlatform = platform;
+            prevAttachablePlatform = attachablePlatform;
             prevLocalPos = platform.InverseTransformDirection(prevPlayerPos - platform.position);
             prevPlatformRotation = platform.rotation;
             additionalVelocity = Vector3.zero;
             naturalGripPreventionCollider.gameObject.SetActive(true);
+            if (localAttachedPlayerSync != null)
+                localAttachedPlayerSync.BeginSyncLoop(attachablePlatform);
         }
 
         private void Detach()
         {
             isAttached = false;
             prevPlatform = null;
+            prevAttachablePlatform = null;
             naturalGripPreventionCollider.gameObject.SetActive(false);
             localPlayer.SetVelocity(localPlayer.GetVelocity() + additionalVelocity);
             immobilized = false;
             localPlayer.Immobilize(immobilized);
+            if (localAttachedPlayerSync != null)
+                localAttachedPlayerSync.StopSyncLoop();
         }
 
         private void ApplyPlatformMovement()
@@ -90,7 +127,8 @@ namespace JanSharp
             Quaternion platformRotation = prevPlatform.rotation;
             Quaternion rotationDiff = ProjectOntoYPlane(Quaternion.Inverse(prevPlatformRotation) * platformRotation);
             // TeleportPlayerAlignedCorrectiveHead(localPlayerPosition + positionDiff, rotationDiff, lerpOnRemote: true);
-            RoomAlignedTeleport(localPlayerPosition + positionDiff, localPlayer.GetRotation() * rotationDiff, lerpOnRemote: true);
+            localAttachedPlayerSync.TeleportPlayer(localPlayerPosition + positionDiff, localPlayer.GetRotation() * rotationDiff);
+            // RoomAlignedTeleport(localPlayerPosition + positionDiff, localPlayer.GetRotation() * rotationDiff, lerpOnRemote: true);
 
             prevPlayerPos = localPlayer.GetPosition();
             additionalVelocity = (positionDiff / Time.deltaTime) * AdditionalVelocityNewWeight + (additionalVelocity * (1f - AdditionalVelocityNewWeight));
@@ -127,7 +165,7 @@ namespace JanSharp
         /// <para>See: https://gist.github.com/Phasedragon/5b76edfb8723b6bc4a49cd43adde5d3d</para>
         /// </summary>
         /// <param name="teleportRot">Gets projected onto the Y plane.</param>
-        private void RoomAlignedTeleport(Vector3 teleportPos, Quaternion teleportRot, bool lerpOnRemote)
+        public void RoomAlignedTeleport(Vector3 teleportPos, Quaternion teleportRot, bool lerpOnRemote)
         {
 #if UNITY_EDITOR
             // Skip process and Exit early for ClientSim since there is no play space to orient.
