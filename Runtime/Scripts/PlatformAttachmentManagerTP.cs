@@ -67,6 +67,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using UdonSharp;
 using UnityEngine;
+using VRC.SDKBase;
 #if !UNITY_EDITOR
 using VRC.SDKBase;
 #endif
@@ -80,6 +81,43 @@ namespace JanSharp
         /// </summary>
         /// <param name="teleportRot">Gets projected onto the Y plane.</param>
         public void RoomAlignedTeleport(Vector3 teleportPos, Quaternion teleportRot, bool lerpOnRemote)
+        {
+            RoomAlignedTeleport(teleportPos, teleportRot, lerpOnRemote, localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin));
+        }
+
+        public void GetTargetPosAndRot(Vector3 teleportPos, Quaternion teleportRot, out Vector3 targetPos, out Quaternion targetRot)
+        {
+            // This is absolutely not how you are supposed to use euler angles. Converting a quaternion to
+            // euler angles, taking some component of that and then converting that back to a quaternion is
+            // asking for trouble, and that is exactly what is happening here. However through some miracle
+            // this case actually behaves correctly, and I (JanSharp) believe that it's related to the order
+            // that the euler axis get processed by Unity. Supposedly it is YXZ around local axis and ZXY
+            // around world axis. So maybe these functions here use YXZ and that's why it works.
+            teleportRot = Quaternion.Euler(0, teleportRot.eulerAngles.y, 0);
+
+            // Get player pos/rot
+            Vector3 playerPos = localPlayerPosition;
+            Quaternion invPlayerRot = Quaternion.Inverse(localPlayer.GetRotation());
+
+            // Get origin pos/rot
+            VRCPlayerApi.TrackingData origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+
+            // Subtract player from origin in order to get the offset from the player to the origin
+            // offset = origin - player
+            Vector3 offsetPos = origin.position - playerPos;
+            Quaternion offsetRot = invPlayerRot * origin.rotation;
+
+            // Add the offset onto the destination in order to construct a pos/rot of where your origin would be in order to put the player at the destination
+            // target = destination + offset
+            targetPos = teleportPos + teleportRot * invPlayerRot * offsetPos;
+            targetRot = teleportRot * offsetRot;
+        }
+
+        /// <summary>
+        /// <para>See: https://gist.github.com/Phasedragon/5b76edfb8723b6bc4a49cd43adde5d3d</para>
+        /// </summary>
+        /// <param name="teleportRot">Gets projected onto the Y plane.</param>
+        public void RoomAlignedTeleport(Vector3 teleportPos, Quaternion teleportRot, bool lerpOnRemote, VRCPlayerApi.TrackingData origin)
         {
 #if UNITY_EDITOR
             // Skip process and Exit early for ClientSim since there is no play space to orient.
@@ -98,7 +136,7 @@ namespace JanSharp
             Quaternion invPlayerRot = Quaternion.Inverse(localPlayer.GetRotation());
 
             // Get origin pos/rot
-            VRCPlayerApi.TrackingData origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            // VRCPlayerApi.TrackingData origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
 
             // Subtract player from origin in order to get the offset from the player to the origin
             // offset = origin - player
