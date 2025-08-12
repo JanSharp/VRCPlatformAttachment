@@ -44,16 +44,9 @@ namespace JanSharp
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
         private int funkyIterations;
         private double funkyTimingMs;
-        private System.Diagnostics.Stopwatch tpSw = new System.Diagnostics.Stopwatch();
-
-        private const float MinMaxTimeFrame = 5f;
-        private int lastFullSecond = int.MinValue;
-
+        private System.Diagnostics.Stopwatch funkyTpSw = new System.Diagnostics.Stopwatch();
         private System.Diagnostics.Stopwatch totalSw = new System.Diagnostics.Stopwatch();
-        private double averageUpdateMS;
-        private double minUpdateMS = double.MaxValue;
-        private double maxUpdateMS = double.MinValue;
-        private string formattedMaxAndMax;
+        private object[] totalSwData;
 #endif
 #if PLATFORM_ATTACHMENT_DEBUG
         private Vector3 positionErrorLastFunkyFrame;
@@ -63,6 +56,7 @@ namespace JanSharp
         private void Start()
         {
             localPlayer = Networking.LocalPlayer;
+            totalSwData = StopwatchUtil.CreateDataContainer();
         }
 
         public void SetLocalAttachedPlayerSync(AttachedRemotePlayer localAttachedPlayerSync)
@@ -140,23 +134,7 @@ namespace JanSharp
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
         private void ShowPerformance()
         {
-            double lastUpdateMS = totalSw.Elapsed.TotalMilliseconds;
-
-            maxUpdateMS = System.Math.Max(maxUpdateMS, lastUpdateMS);
-            minUpdateMS = System.Math.Min(minUpdateMS, lastUpdateMS);
-
-            int currentFullSecond = (int)(Time.realtimeSinceStartup / MinMaxTimeFrame);
-            if (currentFullSecond != lastFullSecond)
-            {
-                lastFullSecond = currentFullSecond;
-
-                formattedMaxAndMax = $" | {minUpdateMS:f3} | {maxUpdateMS:f3}";
-                maxUpdateMS = float.MinValue;
-                minUpdateMS = float.MaxValue;
-            }
-
-            averageUpdateMS = averageUpdateMS * 0.9375 + lastUpdateMS * 0.0625; // 1/16
-            qd.ShowForOneFrame(this, "total ms", $"{averageUpdateMS:f3}{formattedMaxAndMax}");
+            qd.ShowForOneFrame(this, "total ms", StopwatchUtil.FormatAvgMinMax(totalSw, totalSwData));
         }
 #endif
 
@@ -246,8 +224,8 @@ namespace JanSharp
         public void TeleportPlayer(Vector3 position, Quaternion rotation)
         {
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            tpSw.Reset();
-            tpSw.Start();
+            funkyTpSw.Reset();
+            funkyTpSw.Start();
             bool updateTiming = false;
 #endif
 #if PLATFORM_ATTACHMENT_DEBUG
@@ -317,10 +295,10 @@ namespace JanSharp
 #endif
             }
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            tpSw.Stop();
+            funkyTpSw.Stop();
             if (updateTiming)
             {
-                funkyTimingMs = tpSw.Elapsed.TotalMilliseconds;
+                funkyTimingMs = funkyTpSw.Elapsed.TotalMilliseconds;
 #endif
 #if PLATFORM_ATTACHMENT_DEBUG
                 positionErrorLastFunkyFrame = positionErrorLastFrame;
