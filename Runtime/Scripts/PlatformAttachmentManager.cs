@@ -290,13 +290,14 @@ namespace JanSharp
 #if PLATFORM_ATTACHMENT_DEBUG
                 var desiredOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
 #endif
-                localStationPlayerPosition.SetPositionAndRotation(position, localPlayerRotation);
+                // localStationPlayerPosition.SetPositionAndRotation(position, localPlayerRotation);
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-                useStationSw.Start();
+                tpSw.Start();
 #endif
-                localStation.UseStation(localPlayer);
+                localPlayer.TeleportTo(position, localPlayerRotation, VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: true);
+                // localStation.UseStation(localPlayer);
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-                useStationSw.Stop();
+                tpSw.Stop();
 #endif
 #if PLATFORM_ATTACHMENT_DEBUG
                 var origin = PrintOriginDiffs(originalOrigin, desiredOrigin, "station 1");
@@ -312,9 +313,9 @@ namespace JanSharp
                 Vector3 posDiff = origin.position - desiredOriginPos;
                 Quaternion rotDiff = Quaternion.Inverse(desiredOriginRot) * origin.rotation;
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-                exitStationSw.Start();
-                localStation.ExitStation(localPlayer);
-                exitStationSw.Stop();
+                // exitStationSw.Start();
+                // localStation.ExitStation(localPlayer);
+                // exitStationSw.Stop();
                 tpSw.Start();
 #endif
                 localPlayer.TeleportTo(desiredOriginPos, desiredOriginRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
@@ -325,13 +326,14 @@ namespace JanSharp
                 var originPreStation2 = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
                 origin = PrintOriginDiffs(originalOrigin, origin, "tp 2");
 #endif
-                localStationPlayerPosition.SetPositionAndRotation(position - posDiff, localPlayerRotation * Quaternion.Inverse(rotDiff));
+                // localStationPlayerPosition.SetPositionAndRotation(position - posDiff, localPlayerRotation * Quaternion.Inverse(rotDiff));
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-                useStationSw.Start();
+                tpSw.Start();
 #endif
-                localStation.UseStation(localPlayer);
+                localPlayer.TeleportTo(position - posDiff, localPlayerRotation * Quaternion.Inverse(rotDiff), VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: true);
+                // localStation.UseStation(localPlayer);
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-                useStationSw.Stop();
+                tpSw.Stop();
 #endif
 #if PLATFORM_ATTACHMENT_DEBUG
                 origin = PrintOriginDiffs(originalOrigin, origin, "station 2");
@@ -346,9 +348,9 @@ namespace JanSharp
 #endif
                 Vector3 posDiff2 = origin.position - desiredOriginPos;
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-                exitStationSw.Start();
-                localStation.ExitStation(localPlayer);
-                exitStationSw.Stop();
+                // exitStationSw.Start();
+                // localStation.ExitStation(localPlayer);
+                // exitStationSw.Stop();
                 tpSw.Start();
 #endif
                 localPlayer.TeleportTo(desiredOriginPos, desiredOriginRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
