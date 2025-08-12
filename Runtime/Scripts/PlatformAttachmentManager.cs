@@ -16,10 +16,14 @@ namespace JanSharp
 
         private VRCPlayerApi localPlayer;
         private AttachedRemotePlayer localAttachedPlayerSync;
+        private VRC.SDK3.Components.VRCStation localStation;
+        private Transform localStationPlayerPosition;
         /// <summary>
         /// <para>Set at the beginning of <see cref="OnTrulyPostLateUpdate"/>.</para>
         /// </summary>
         private Vector3 localPlayerPosition;
+        private Quaternion localPlayerRotation;
+        private VRCPlayerApi.TrackingData localPlayerOrigin;
 
         [BuildTimeIdAssignment(nameof(allPlatformIds), nameof(highestPlatformId))]
         [HideInInspector][SerializeField] private AttachablePlatform[] allPlatforms;
@@ -36,6 +40,12 @@ namespace JanSharp
         // the current frame's velocity is 70%, the prev velocity is 30%. And it repeats like that
         private const float AdditionalVelocityNewWeight = 0.35f;
 
+        // TP related things.
+        private int funkyIterations;
+        private double funkyTimingMs;
+        private Vector3 positionErrorLastFunkyFrame;
+        private Quaternion rotationErrorLastFunkyFrame;
+
         private bool immobilized;
 
         private void Start()
@@ -45,7 +55,11 @@ namespace JanSharp
 
         public void SetLocalAttachedPlayerSync(AttachedRemotePlayer localAttachedPlayerSync)
         {
+            if (localPlayer == null)
+                Start();
             this.localAttachedPlayerSync = localAttachedPlayerSync;
+            localStation = localAttachedPlayerSync.station;
+            localStationPlayerPosition = localAttachedPlayerSync.stationPlayerPosition;
             if (isAttached)
                 localAttachedPlayerSync.BeginSyncLoop(prevAttachablePlatform);
         }
@@ -104,7 +118,7 @@ namespace JanSharp
             if (attachablePlatform.id == 0u)
                 attachablePlatform.id = GetIdFromPlatform(attachablePlatform);
             isAttached = true;
-            prevPlayerPos = localPlayer.GetPosition();
+            prevPlayerPos = localPlayerPosition;
             prevPlatform = platform;
             prevAttachablePlatform = attachablePlatform;
             prevLocalPos = platform.InverseTransformDirection(prevPlayerPos - platform.position);
@@ -133,9 +147,9 @@ namespace JanSharp
             Vector3 positionDiff = prevPlatform.position + prevPlatform.TransformDirection(prevLocalPos) - prevPlayerPos;
             Quaternion platformRotation = prevPlatform.rotation;
             Quaternion rotationDiff = ProjectOntoYPlane(Quaternion.Inverse(prevPlatformRotation) * platformRotation);
-            // TeleportPlayerAlignedCorrectiveHead(localPlayerPosition + positionDiff, rotationDiff, lerpOnRemote: true);
-            localAttachedPlayerSync.TeleportPlayer(localPlayerPosition + positionDiff, localPlayer.GetRotation() * rotationDiff, positionDiff, rotationDiff);
-            // RoomAlignedTeleport(localPlayerPosition + positionDiff, localPlayer.GetRotation() * rotationDiff, lerpOnRemote: true);
+            localPlayerRotation = localPlayer.GetRotation();
+            localPlayerOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            TeleportPlayer(localPlayerPosition + positionDiff, localPlayerRotation * rotationDiff);
 
             prevPlayerPos = localPlayer.GetPosition();
             additionalVelocity = (positionDiff / Time.deltaTime) * AdditionalVelocityNewWeight + (additionalVelocity * (1f - AdditionalVelocityNewWeight));
@@ -158,14 +172,92 @@ namespace JanSharp
                 : Quaternion.LookRotation(projectedForward.normalized);
         }
 
-        private void TeleportPlayerAlignedCorrectiveHead(Vector3 teleportPosition, Quaternion rotationDiff, bool lerpOnRemote)
+        public void UseLocalStation()
         {
-            Quaternion playerRotation = localPlayer.GetRotation();
-            Quaternion preHeadRotation = ProjectOntoYPlane(localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation);
-            localPlayer.TeleportTo(teleportPosition, playerRotation, VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote);
-            Quaternion postHeadRotation = ProjectOntoYPlane(localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation);
-            Quaternion headRotationOffset = Quaternion.Inverse(postHeadRotation) * preHeadRotation;
-            localPlayer.TeleportTo(teleportPosition, headRotationOffset * playerRotation * rotationDiff, VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote);
+            localPlayerPosition = localPlayer.GetPosition();
+            localPlayerRotation = localPlayer.GetRotation();
+            localPlayerOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            // Uses the teleport logic to prevent rotational jumps.
+            TeleportPlayer(localPlayerPosition, localPlayerRotation);
+        }
+
+        private VRCPlayerApi.TrackingData PrintOriginDiffs(
+            VRCPlayerApi.TrackingData originalOrigin,
+            VRCPlayerApi.TrackingData prevOrigin,
+            string actionName)
+        {
+            var origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            Vector3 inducedMovement = origin.position - prevOrigin.position;
+            Quaternion inducedRotation = Quaternion.Inverse(prevOrigin.rotation) * origin.rotation;
+            Vector3 totalInducedMovement = origin.position - originalOrigin.position;
+            Quaternion totalInducedRotation = Quaternion.Inverse(originalOrigin.rotation) * origin.rotation;
+            qd.ShowForOneFrame(this, $"{actionName} induced movement", $"{inducedMovement:f3}, total: {totalInducedMovement:f3}");
+            qd.ShowForOneFrame(this, $"{actionName} induced rotation", $"{inducedRotation.eulerAngles:f3}, total: {totalInducedRotation.eulerAngles:f3}");
+            return origin;
+        }
+
+        public void TeleportPlayer(Vector3 position, Quaternion rotation)
+        {
+            System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+            sw.Start();
+            // var originalOrigin = localPlayerOrigin;
+            GetRoomAlignedTeleportTargetPosAndRot(position, rotation, out var tpPos, out var tpRot);
+            Vector3 positionErrorLastFrame = Vector3.zero;
+            Quaternion rotationErrorLastFrame = Quaternion.identity;
+            bool updateTiming = false;
+            // Only requires a single iteration 99.9% of the time. However when the head is tilted to the left
+            // or right, when looking up and down there is a single frame at some threshold where it requires
+            // multiple iterations to fully undo unintentional movement and rotation induced by entering the
+            // station.
+            // Requires 2 at <= 40 fps, 3 at 50 fps, 5 to 6 iterations at 60 fps, cannot test higher fps.
+            // Each iteration takes a bit more than 1 ms on my machine with this current implementation.
+            for (int i = 0; i < 10; i++)
+            {
+                localPlayer.TeleportTo(tpPos, tpRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
+                var desiredOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+                // var desiredOrigin = PrintOriginDiffs(originalOrigin, originalOrigin, "tp 1");
+                localStationPlayerPosition.SetPositionAndRotation(position, localPlayerRotation);
+                localStation.UseStation(localPlayer);
+                var origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+                // var origin = PrintOriginDiffs(originalOrigin, desiredOrigin, "station 1");
+                Vector3 posDiff = origin.position - desiredOrigin.position;
+                Quaternion rotDiff = Quaternion.Inverse(desiredOrigin.rotation) * origin.rotation;
+                localPlayer.TeleportTo(tpPos, tpRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
+                var originPreStation2 = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+                // origin = PrintOriginDiffs(originalOrigin, origin, "tp 2");
+                localStationPlayerPosition.SetPositionAndRotation(position - posDiff, localPlayerRotation * Quaternion.Inverse(rotDiff));
+                localStation.UseStation(localPlayer);
+                origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+                // origin = PrintOriginDiffs(originalOrigin, origin, "station 2");
+                Vector3 posDiff2 = origin.position - originPreStation2.position;
+                localPlayer.TeleportTo(tpPos, tpRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
+                // origin = PrintOriginDiffs(originalOrigin, origin, "tp 3");
+                localStationPlayerPosition.SetPositionAndRotation(position - posDiff - posDiff2, localPlayerRotation * Quaternion.Inverse(rotDiff));
+                localStation.UseStation(localPlayer);
+                origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+                // origin = PrintOriginDiffs(originalOrigin, origin, "station 3");
+                positionErrorLastFrame = origin.position - desiredOrigin.position;
+                rotationErrorLastFrame = Quaternion.Inverse(desiredOrigin.rotation) * origin.rotation;
+                // qd.ShowForOneFrame(this, $"position error", $"{positionErrorLastFrame:f3}");
+                // qd.ShowForOneFrame(this, $"rotation error", $"{rotationErrorLastFrame.eulerAngles:f3}");
+                if (positionErrorLastFrame == Vector3.zero && rotationErrorLastFrame == Quaternion.identity)
+                    break;
+                funkyIterations = i + 2;
+                updateTiming = true;
+                // position -= positionErrorLastFrame;
+                // playerRotation *= Quaternion.Inverse(rotationErrorLastFrame);
+            }
+            sw.Stop();
+            if (updateTiming)
+            {
+                funkyTimingMs = sw.Elapsed.TotalMilliseconds;
+                positionErrorLastFunkyFrame = positionErrorLastFrame;
+                rotationErrorLastFunkyFrame = rotationErrorLastFrame;
+            }
+            qd.ShowForOneFrame(this, "funkyIterations", $"{funkyIterations:d}");
+            qd.ShowForOneFrame(this, "funkyTimingMs", $"{funkyTimingMs:f3}");
+            qd.ShowForOneFrame(this, "funkyPositionErrorLastFrame", $"{positionErrorLastFunkyFrame:f3}");
+            qd.ShowForOneFrame(this, "funkyRotationErrorLastFrame", $"{rotationErrorLastFunkyFrame.eulerAngles:f3}");
         }
     }
 }

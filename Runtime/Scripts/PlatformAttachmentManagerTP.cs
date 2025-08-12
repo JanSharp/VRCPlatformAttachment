@@ -29,10 +29,13 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 // Notes by JanSharp:
-// Modified it slightly, most notably just commenting out the projecting of the rotation onto the y plane,
-// as that is not needed for my use case here.
+// Modified it to fit into how the rest of the script works.
 //
-// Additional note, I'm of the opinion that you cannot put a license onto this function.
+// And a preface for the second note here, I want to give credit to people who have helped me, as I did by
+// including the names via including the license at the top, as well as including a link to the github gist
+// in the xml annotations. Yet I still believe that the MIT license has been used improperly here, and I am
+// being quite blunt about it below.
+// So then, the note: I'm of the opinion that you cannot put a license onto this function.
 // It is literally just getting some Vector3s and Quaternions, doing a tiny amount of math and calling a
 // teleport function. I've done that dozens of times throughout my time with Unity.
 // To me this is more like the MIT license being used as a patent. I'm no lawyer but this just doesn't make
@@ -48,6 +51,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // That's right! It would be the exact same code, maybe just rearranged ever so slightly.
 // And thus even if I did that one could look at it and make the argument that I just took MIT licensed code
 // and removed the license from it, which would be not adhering to the license.
+// This is the core of the issue. By reading a little code snippet I now feel forced to include somebody's
+// license every time I apply the knowledge I have gained from reading it, even when I would not copy and
+// paste it... because there's no notably different way to write that function.
 // And that's so stupid. You can't put an MIT license on an idea or knowledge. That's a patent, not a license.
 // But here I am, including the license notice at the top anyway. Why? Because just in case somebody would
 // complain, I do not want to deal with arguing with them. So this makes it impossible for them to argue that
@@ -67,7 +73,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using UdonSharp;
 using UnityEngine;
-using VRC.SDKBase;
 #if !UNITY_EDITOR
 using VRC.SDKBase;
 #endif
@@ -78,14 +83,11 @@ namespace JanSharp
     {
         /// <summary>
         /// <para>See: https://gist.github.com/Phasedragon/5b76edfb8723b6bc4a49cd43adde5d3d</para>
+        /// <para>Expects <see cref="localPlayerPosition"/>, <see cref="localPlayerRotation"/> and
+        /// <see cref="localPlayerOrigin"/> to be set before getting called.</para>
         /// </summary>
         /// <param name="teleportRot">Gets projected onto the Y plane.</param>
-        public void RoomAlignedTeleport(Vector3 teleportPos, Quaternion teleportRot, bool lerpOnRemote)
-        {
-            RoomAlignedTeleport(teleportPos, teleportRot, lerpOnRemote, localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin));
-        }
-
-        public void GetTargetPosAndRot(Vector3 teleportPos, Quaternion teleportRot, out Vector3 targetPos, out Quaternion targetRot)
+        public void GetRoomAlignedTeleportTargetPosAndRot(Vector3 teleportPos, Quaternion teleportRot, out Vector3 targetPos, out Quaternion targetRot)
         {
             // This is absolutely not how you are supposed to use euler angles. Converting a quaternion to
             // euler angles, taking some component of that and then converting that back to a quaternion is
@@ -97,15 +99,15 @@ namespace JanSharp
 
             // Get player pos/rot
             Vector3 playerPos = localPlayerPosition;
-            Quaternion invPlayerRot = Quaternion.Inverse(localPlayer.GetRotation());
+            Quaternion invPlayerRot = Quaternion.Inverse(localPlayerRotation);
 
             // Get origin pos/rot
-            VRCPlayerApi.TrackingData origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            // VRCPlayerApi.TrackingData origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
 
             // Subtract player from origin in order to get the offset from the player to the origin
             // offset = origin - player
-            Vector3 offsetPos = origin.position - playerPos;
-            Quaternion offsetRot = invPlayerRot * origin.rotation;
+            Vector3 offsetPos = localPlayerOrigin.position - playerPos;
+            Quaternion offsetRot = invPlayerRot * localPlayerOrigin.rotation;
 
             // Add the offset onto the destination in order to construct a pos/rot of where your origin would be in order to put the player at the destination
             // target = destination + offset
@@ -115,41 +117,18 @@ namespace JanSharp
 
         /// <summary>
         /// <para>See: https://gist.github.com/Phasedragon/5b76edfb8723b6bc4a49cd43adde5d3d</para>
+        /// <para>Expects <see cref="localPlayerPosition"/>, <see cref="localPlayerRotation"/> and
+        /// <see cref="localPlayerOrigin"/> to be set before getting called.</para>
         /// </summary>
         /// <param name="teleportRot">Gets projected onto the Y plane.</param>
-        public void RoomAlignedTeleport(Vector3 teleportPos, Quaternion teleportRot, bool lerpOnRemote, VRCPlayerApi.TrackingData origin)
+        public void RoomAlignedTeleport(Vector3 teleportPos, Quaternion teleportRot, bool lerpOnRemote)
         {
 #if UNITY_EDITOR
             // Skip process and Exit early for ClientSim since there is no play space to orient.
             localPlayer.TeleportTo(teleportPos, teleportRot);
 #else
-            // This is absolutely not how you are supposed to use euler angles. Converting a quaternion to
-            // euler angles, taking some component of that and then converting that back to a quaternion is
-            // asking for trouble, and that is exactly what is happening here. However through some miracle
-            // this case actually behaves correctly, and I (JanSharp) believe that it's related to the order
-            // that the euler axis get processed by Unity. Supposedly it is YXZ around local axis and ZXY
-            // around world axis. So maybe these functions here use YXZ and that's why it works.
-            teleportRot = Quaternion.Euler(0, teleportRot.eulerAngles.y, 0);
-
-            // Get player pos/rot
-            Vector3 playerPos = localPlayerPosition;
-            Quaternion invPlayerRot = Quaternion.Inverse(localPlayer.GetRotation());
-
-            // Get origin pos/rot
-            // VRCPlayerApi.TrackingData origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-
-            // Subtract player from origin in order to get the offset from the player to the origin
-            // offset = origin - player
-            Vector3 offsetPos = origin.position - playerPos;
-            Quaternion offsetRot = invPlayerRot * origin.rotation;
-
-            // Add the offset onto the destination in order to construct a pos/rot of where your origin would be in order to put the player at the destination
-            // target = destination + offset
-            localPlayer.TeleportTo(
-                teleportPos + teleportRot * invPlayerRot * offsetPos,
-                teleportRot * offsetRot,
-                VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint,
-                lerpOnRemote);
+            GetRoomAlignedTeleportTargetPosAndRot(teleportPos, teleportRot, out var pos, out var rot);
+            localPlayer.TeleportTo(pos, rot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote);
 #endif
         }
     }
