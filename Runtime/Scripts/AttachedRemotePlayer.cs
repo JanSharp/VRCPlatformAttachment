@@ -47,6 +47,8 @@ namespace JanSharp
             // stationPlayerPosition.SetParent(this.attachedPlatform, worldPositionStays: false);
             stationPlayerPosition.SetPositionAndRotation(player.GetPosition(), player.GetRotation());
             // prevDesiredRotation = GetProjectedHeadRotation();
+            // TODO: When the head is tilted to the left or right and is also looking down,
+            // then this causes a significant rotational jump upon becoming attached.
             station.UseStation(player);
             prevOrigin = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
             prevHead = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
@@ -103,6 +105,11 @@ namespace JanSharp
             qd.ShowForOneFrame(this, $"{actionName} induced rotation", $"{inducedRotation.eulerAngles:f3}, total: {totalInducedRotation.eulerAngles:f3}");
             return origin;
         }
+
+        private int funkyIterations;
+        private double funkyTimingMs;
+        private Vector3 funkyPositionErrorLastFrame;
+        private Quaternion funkyRotationErrorLastFrame;
 
         public void TeleportPlayer(Vector3 position, Quaternion rotation, Vector3 positionDiff, Quaternion rotationDiff)
         {
@@ -298,40 +305,61 @@ namespace JanSharp
             // prevHead = head;
             #endregion
 
-            // Doesn't do anything... for some reason. Like it really should do something but I'm not seeing it.
-            // This was attempting to prevent the rotational jumps at a vertical threshold when looking up and
-            // down while the head is tilted left or right. The more tilted the bigger the rotational jump.
-            // position -= positionErrorLastFrame;
-            // rotation *= Quaternion.Inverse(rotationErrorLastFrame);
-
-            var originalOrigin = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+            sw.Start();
+            // var originalOrigin = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
             manager.GetTargetPosAndRot(position, rotation, out var tpPos, out var tpRot);
-            player.TeleportTo(tpPos, tpRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
-            var desiredOrigin = PrintOriginDiffs(originalOrigin, originalOrigin, "tp 1");
-            Quaternion playerRotation = player.GetRotation();
-            stationPlayerPosition.SetPositionAndRotation(position, playerRotation);
-            station.UseStation(player);
-            var origin = PrintOriginDiffs(originalOrigin, desiredOrigin, "station 1");
-            Vector3 posDiff = origin.position - desiredOrigin.position;
-            Quaternion rotDiff = Quaternion.Inverse(desiredOrigin.rotation) * origin.rotation;
-            // station.ExitStation(player);
-            // origin = PrintOriginDiffs(originalOrigin, origin, "exiting station");
-            player.TeleportTo(tpPos, tpRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
-            origin = PrintOriginDiffs(originalOrigin, origin, "tp 2");
-            var originPreStation2 = origin;
-            stationPlayerPosition.SetPositionAndRotation(position - posDiff, playerRotation * Quaternion.Inverse(rotDiff));
-            station.UseStation(player);
-            origin = PrintOriginDiffs(originalOrigin, origin, "station 2");
-            Vector3 posDiff2 = origin.position - originPreStation2.position;
-            // station.ExitStation(player);
-            // origin = PrintOriginDiffs(originalOrigin, origin, "exiting station");
-            player.TeleportTo(tpPos, tpRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
-            origin = PrintOriginDiffs(originalOrigin, origin, "tp 3");
-            stationPlayerPosition.SetPositionAndRotation(position - posDiff - posDiff2, playerRotation * Quaternion.Inverse(rotDiff));
-            station.UseStation(player);
-            origin = PrintOriginDiffs(originalOrigin, origin, "station 3");
-            positionErrorLastFrame = origin.position - desiredOrigin.position;
-            rotationErrorLastFrame = Quaternion.Inverse(desiredOrigin.rotation) * origin.rotation;
+            Quaternion playerRotation = Quaternion.identity;
+            bool updateTiming = false;
+            // Requires 2 at <= 40 fps, 3 at 50 fps, 5 to 6 iterations at 60 fps, cannot test higher fps.
+            for (int i = 0; i < 10; i++)
+            {
+                player.TeleportTo(tpPos, tpRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
+                var desiredOrigin = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+                // var desiredOrigin = PrintOriginDiffs(originalOrigin, originalOrigin, "tp 1");
+                playerRotation = i == 0 ? player.GetRotation() : playerRotation;
+                stationPlayerPosition.SetPositionAndRotation(position, playerRotation);
+                station.UseStation(player);
+                var origin = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+                // var origin = PrintOriginDiffs(originalOrigin, desiredOrigin, "station 1");
+                Vector3 posDiff = origin.position - desiredOrigin.position;
+                Quaternion rotDiff = Quaternion.Inverse(desiredOrigin.rotation) * origin.rotation;
+                player.TeleportTo(tpPos, tpRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
+                var originPreStation2 = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+                // origin = PrintOriginDiffs(originalOrigin, origin, "tp 2");
+                stationPlayerPosition.SetPositionAndRotation(position - posDiff, playerRotation * Quaternion.Inverse(rotDiff));
+                station.UseStation(player);
+                origin = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+                // origin = PrintOriginDiffs(originalOrigin, origin, "station 2");
+                Vector3 posDiff2 = origin.position - originPreStation2.position;
+                player.TeleportTo(tpPos, tpRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
+                // origin = PrintOriginDiffs(originalOrigin, origin, "tp 3");
+                stationPlayerPosition.SetPositionAndRotation(position - posDiff - posDiff2, playerRotation * Quaternion.Inverse(rotDiff));
+                station.UseStation(player);
+                origin = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+                // origin = PrintOriginDiffs(originalOrigin, origin, "station 3");
+                positionErrorLastFrame = origin.position - desiredOrigin.position;
+                rotationErrorLastFrame = Quaternion.Inverse(desiredOrigin.rotation) * origin.rotation;
+                // qd.ShowForOneFrame(this, $"position error", $"{positionErrorLastFrame:f3}");
+                // qd.ShowForOneFrame(this, $"rotation error", $"{rotationErrorLastFrame.eulerAngles:f3}");
+                if (positionErrorLastFrame == Vector3.zero && rotationErrorLastFrame == Quaternion.identity)
+                    break;
+                funkyIterations = i + 2;
+                updateTiming = true;
+                position -= positionErrorLastFrame;
+                playerRotation *= Quaternion.Inverse(rotationErrorLastFrame);
+            }
+            sw.Stop();
+            if (updateTiming)
+            {
+                funkyTimingMs = sw.Elapsed.TotalMilliseconds;
+                funkyPositionErrorLastFrame = positionErrorLastFrame;
+                funkyRotationErrorLastFrame = rotationErrorLastFrame;
+            }
+            qd.ShowForOneFrame(this, "funkyIterations", $"{funkyIterations:d}");
+            qd.ShowForOneFrame(this, "funkyTimingMs", $"{funkyTimingMs:f3}");
+            qd.ShowForOneFrame(this, "funkyPositionErrorLastFrame", $"{funkyPositionErrorLastFrame:f3}");
+            qd.ShowForOneFrame(this, "funkyRotationErrorLastFrame", $"{funkyRotationErrorLastFrame.eulerAngles:f3}");
         }
 
         public void StopSyncLoop()
