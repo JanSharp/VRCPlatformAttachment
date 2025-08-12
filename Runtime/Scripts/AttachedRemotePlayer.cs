@@ -44,19 +44,16 @@ namespace JanSharp
         {
             syncedAttachedPlatformId = attachedPlatform.id;
             this.attachedPlatform = attachedPlatform.transform;
-            // stationPlayerPosition.SetParent(this.attachedPlatform, worldPositionStays: false);
-            stationPlayerPosition.SetPositionAndRotation(player.GetPosition(), player.GetRotation());
-            // prevDesiredRotation = GetProjectedHeadRotation();
-            // TODO: When the head is tilted to the left or right and is also looking down,
-            // then this causes a significant rotational jump upon becoming attached.
-            station.UseStation(player);
-            prevOrigin = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-            prevHead = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
-            prevPosition = player.GetPosition();
-            prevRotation = player.GetRotation();
             positionErrorLastFrame = Vector3.zero;
             rotationErrorLastFrame = Quaternion.identity;
-            // stationPlayerPosition.SetPositionAndRotation(this.attachedPlatform.position, this.attachedPlatform.rotation);
+            // stationPlayerPosition.SetParent(this.attachedPlatform, worldPositionStays: false);
+            // prevDesiredRotation = GetProjectedHeadRotation();
+            TeleportPlayer(player.GetPosition(), player.GetRotation(), Vector3.zero, Quaternion.identity);
+            // prevOrigin = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            // prevHead = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
+            // prevPosition = player.GetPosition();
+            // prevRotation = player.GetRotation();
+
             RequestSerialization();
             if (isSyncLoopRunning)
                 return;
@@ -82,10 +79,10 @@ namespace JanSharp
             return ProjectOntoYPlane(player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation);
         }
 
-        private VRCPlayerApi.TrackingData prevOrigin;
-        private VRCPlayerApi.TrackingData prevHead;
-        private Vector3 prevPosition;
-        private Quaternion prevRotation;
+        // private VRCPlayerApi.TrackingData prevOrigin;
+        // private VRCPlayerApi.TrackingData prevHead;
+        // private Vector3 prevPosition;
+        // private Quaternion prevRotation;
         // private Quaternion prevDesiredRotation;
 
         private Vector3 positionErrorLastFrame;
