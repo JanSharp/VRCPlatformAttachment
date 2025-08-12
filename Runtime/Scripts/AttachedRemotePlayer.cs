@@ -346,8 +346,8 @@ namespace JanSharp
                     break;
                 funkyIterations = i + 2;
                 updateTiming = true;
-                position -= positionErrorLastFrame;
-                playerRotation *= Quaternion.Inverse(rotationErrorLastFrame);
+                // position -= positionErrorLastFrame;
+                // playerRotation *= Quaternion.Inverse(rotationErrorLastFrame);
             }
             sw.Stop();
             if (updateTiming)
