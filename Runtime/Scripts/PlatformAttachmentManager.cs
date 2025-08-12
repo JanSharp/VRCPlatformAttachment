@@ -64,11 +64,13 @@ namespace JanSharp
         private void Start()
         {
             localPlayer = Networking.LocalPlayer;
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
             totalSwData = StopwatchUtil.CreateDataContainer();
             getTrackingDataSwData = StopwatchUtil.CreateDataContainer();
             exitStationSwData = StopwatchUtil.CreateDataContainer();
             tpSwData = StopwatchUtil.CreateDataContainer();
             useStationSwData = StopwatchUtil.CreateDataContainer();
+#endif
         }
 
         public void SetLocalAttachedPlayerSync(AttachedRemotePlayer localAttachedPlayerSync)
