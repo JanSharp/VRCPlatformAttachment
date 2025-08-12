@@ -194,7 +194,7 @@ namespace JanSharp
             System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
             sw.Start();
             // var originalOrigin = localPlayerOrigin;
-            GetRoomAlignedTeleportTargetPosAndRot(position, rotation, out var tpPos, out var tpRot);
+            GetRoomAlignedTeleportTargetPosAndRot(position, rotation, out var desiredOriginPos, out var desiredOriginRot);
             Vector3 positionErrorLastFrame = Vector3.zero;
             Quaternion rotationErrorLastFrame = Quaternion.identity;
             bool updateTiming = false;
@@ -206,39 +206,36 @@ namespace JanSharp
             // Each iteration takes a bit more than 1 ms on my machine with this current implementation.
             for (int i = 0; i < 10; i++)
             {
-                localPlayer.TeleportTo(tpPos, tpRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
-                var desiredOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-                // var desiredOrigin = PrintOriginDiffs(originalOrigin, originalOrigin, "tp 1");
+                // Teleports also make the player exist the station.
+                localPlayer.TeleportTo(desiredOriginPos, desiredOriginRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
                 localStationPlayerPosition.SetPositionAndRotation(position, localPlayerRotation);
                 localStation.UseStation(localPlayer);
                 var origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
                 // var origin = PrintOriginDiffs(originalOrigin, desiredOrigin, "station 1");
-                Vector3 posDiff = origin.position - desiredOrigin.position;
-                Quaternion rotDiff = Quaternion.Inverse(desiredOrigin.rotation) * origin.rotation;
-                localPlayer.TeleportTo(tpPos, tpRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
-                var originPreStation2 = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+                Vector3 posDiff = origin.position - desiredOriginPos;
+                Quaternion rotDiff = Quaternion.Inverse(desiredOriginRot) * origin.rotation;
+                localPlayer.TeleportTo(desiredOriginPos, desiredOriginRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
+                // var originPreStation2 = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
                 // origin = PrintOriginDiffs(originalOrigin, origin, "tp 2");
                 localStationPlayerPosition.SetPositionAndRotation(position - posDiff, localPlayerRotation * Quaternion.Inverse(rotDiff));
                 localStation.UseStation(localPlayer);
                 origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
                 // origin = PrintOriginDiffs(originalOrigin, origin, "station 2");
-                Vector3 posDiff2 = origin.position - originPreStation2.position;
-                localPlayer.TeleportTo(tpPos, tpRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
+                Vector3 posDiff2 = origin.position - desiredOriginPos;
+                localPlayer.TeleportTo(desiredOriginPos, desiredOriginRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
                 // origin = PrintOriginDiffs(originalOrigin, origin, "tp 3");
                 localStationPlayerPosition.SetPositionAndRotation(position - posDiff - posDiff2, localPlayerRotation * Quaternion.Inverse(rotDiff));
                 localStation.UseStation(localPlayer);
                 origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
                 // origin = PrintOriginDiffs(originalOrigin, origin, "station 3");
-                positionErrorLastFrame = origin.position - desiredOrigin.position;
-                rotationErrorLastFrame = Quaternion.Inverse(desiredOrigin.rotation) * origin.rotation;
+                positionErrorLastFrame = origin.position - desiredOriginPos;
+                rotationErrorLastFrame = Quaternion.Inverse(desiredOriginRot) * origin.rotation;
                 // qd.ShowForOneFrame(this, $"position error", $"{positionErrorLastFrame:f3}");
                 // qd.ShowForOneFrame(this, $"rotation error", $"{rotationErrorLastFrame.eulerAngles:f3}");
                 if (positionErrorLastFrame == Vector3.zero && rotationErrorLastFrame == Quaternion.identity)
                     break;
                 funkyIterations = i + 2;
                 updateTiming = true;
-                // position -= positionErrorLastFrame;
-                // playerRotation *= Quaternion.Inverse(rotationErrorLastFrame);
             }
             sw.Stop();
             if (updateTiming)
