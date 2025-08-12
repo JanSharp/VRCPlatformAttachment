@@ -308,6 +308,10 @@ namespace JanSharp
             manager.GetTargetPosAndRot(position, rotation, out var tpPos, out var tpRot);
             Quaternion playerRotation = Quaternion.identity;
             bool updateTiming = false;
+            // Only requires a single iteration 99.9% of the time. However when the head is tilted to the left
+            // or right, when looking up and down there is a single frame at some threshold where it requires
+            // multiple iterations to fully undo unintentional movement and rotation induced by entering the
+            // station.
             // Requires 2 at <= 40 fps, 3 at 50 fps, 5 to 6 iterations at 60 fps, cannot test higher fps.
             // Each iteration takes a bit more than 1 ms on my machine with this current implementation.
             for (int i = 0; i < 10; i++)
