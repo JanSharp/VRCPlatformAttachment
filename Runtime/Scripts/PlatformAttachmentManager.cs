@@ -47,6 +47,14 @@ namespace JanSharp
         private System.Diagnostics.Stopwatch funkyTpSw = new System.Diagnostics.Stopwatch();
         private System.Diagnostics.Stopwatch totalSw = new System.Diagnostics.Stopwatch();
         private object[] totalSwData;
+        private System.Diagnostics.Stopwatch getTrackingDataSw = new System.Diagnostics.Stopwatch();
+        private object[] getTrackingDataSwData;
+        private System.Diagnostics.Stopwatch exitStationSw = new System.Diagnostics.Stopwatch();
+        private object[] exitStationSwData;
+        private System.Diagnostics.Stopwatch tpSw = new System.Diagnostics.Stopwatch();
+        private object[] tpSwData;
+        private System.Diagnostics.Stopwatch useStationSw = new System.Diagnostics.Stopwatch();
+        private object[] useStationSwData;
 #endif
 #if PLATFORM_ATTACHMENT_DEBUG
         private Vector3 positionErrorLastFunkyFrame;
@@ -57,6 +65,10 @@ namespace JanSharp
         {
             localPlayer = Networking.LocalPlayer;
             totalSwData = StopwatchUtil.CreateDataContainer();
+            getTrackingDataSwData = StopwatchUtil.CreateDataContainer();
+            exitStationSwData = StopwatchUtil.CreateDataContainer();
+            tpSwData = StopwatchUtil.CreateDataContainer();
+            useStationSwData = StopwatchUtil.CreateDataContainer();
         }
 
         public void SetLocalAttachedPlayerSync(AttachedRemotePlayer localAttachedPlayerSync)
@@ -86,7 +98,6 @@ namespace JanSharp
         public void OnTrulyPostLateUpdate()
         {
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            totalSw.Reset();
             totalSw.Start();
 #endif
 #if PLATFORM_ATTACHMENT_DEBUG
@@ -135,6 +146,15 @@ namespace JanSharp
         private void ShowPerformance()
         {
             qd.ShowForOneFrame(this, "total ms", StopwatchUtil.FormatAvgMinMax(totalSw, totalSwData));
+            qd.ShowForOneFrame(this, "get tracking data ms", StopwatchUtil.FormatAvgMinMax(getTrackingDataSw, getTrackingDataSwData));
+            qd.ShowForOneFrame(this, "exit station ms", StopwatchUtil.FormatAvgMinMax(exitStationSw, exitStationSwData));
+            qd.ShowForOneFrame(this, "tp ms", StopwatchUtil.FormatAvgMinMax(tpSw, tpSwData));
+            qd.ShowForOneFrame(this, "use station ms", StopwatchUtil.FormatAvgMinMax(useStationSw, useStationSwData));
+            totalSw.Reset();
+            getTrackingDataSw.Reset();
+            exitStationSw.Reset();
+            tpSw.Reset();
+            useStationSw.Reset();
         }
 #endif
 
@@ -174,7 +194,13 @@ namespace JanSharp
             Quaternion platformRotation = prevPlatform.rotation;
             Quaternion rotationDiff = ProjectOntoYPlane(Quaternion.Inverse(prevPlatformRotation) * platformRotation);
             localPlayerRotation = localPlayer.GetRotation();
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+            getTrackingDataSw.Start();
+#endif
             localPlayerOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+            getTrackingDataSw.Stop();
+#endif
             TeleportPlayer(localPlayerPosition + positionDiff, localPlayerRotation * rotationDiff);
 
             prevPlayerPos = localPlayer.GetPosition();
@@ -199,7 +225,13 @@ namespace JanSharp
         {
             localPlayerPosition = localPlayer.GetPosition();
             localPlayerRotation = localPlayer.GetRotation();
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+            getTrackingDataSw.Start();
+#endif
             localPlayerOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+            getTrackingDataSw.Stop();
+#endif
             // Uses the teleport logic to prevent rotational jumps.
             TeleportPlayer(localPlayerPosition, localPlayerRotation);
         }
@@ -210,7 +242,9 @@ namespace JanSharp
             VRCPlayerApi.TrackingData prevOrigin,
             string actionName)
         {
+            trackingDataSw.Start();
             var origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            trackingDataSw.Stop();
             Vector3 inducedMovement = origin.position - prevOrigin.position;
             Quaternion inducedRotation = Quaternion.Inverse(prevOrigin.rotation) * origin.rotation;
             Vector3 totalInducedMovement = origin.position - originalOrigin.position;
@@ -243,38 +277,95 @@ namespace JanSharp
             for (int i = 0; i < MaxTPIterations; i++)
             {
                 // Teleports also make the player exist the station.
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+                exitStationSw.Start();
+                localStation.ExitStation(localPlayer);
+                exitStationSw.Stop();
+                tpSw.Start();
+#endif
                 localPlayer.TeleportTo(desiredOriginPos, desiredOriginRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+                tpSw.Stop();
+#endif
 #if PLATFORM_ATTACHMENT_DEBUG
                 var desiredOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
 #endif
                 localStationPlayerPosition.SetPositionAndRotation(position, localPlayerRotation);
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+                useStationSw.Start();
+#endif
                 localStation.UseStation(localPlayer);
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+                useStationSw.Stop();
+#endif
 #if PLATFORM_ATTACHMENT_DEBUG
                 var origin = PrintOriginDiffs(originalOrigin, desiredOrigin, "station 1");
 #else
+#if PLATFORM_ATTACHMENT_STOPWATCH
+                getTrackingDataSw.Start();
+#endif
                 var origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+#if PLATFORM_ATTACHMENT_STOPWATCH
+                getTrackingDataSw.Stop();
+#endif
 #endif
                 Vector3 posDiff = origin.position - desiredOriginPos;
                 Quaternion rotDiff = Quaternion.Inverse(desiredOriginRot) * origin.rotation;
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+                exitStationSw.Start();
+                localStation.ExitStation(localPlayer);
+                exitStationSw.Stop();
+                tpSw.Start();
+#endif
                 localPlayer.TeleportTo(desiredOriginPos, desiredOriginRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+                tpSw.Stop();
+#endif
 #if PLATFORM_ATTACHMENT_DEBUG
                 var originPreStation2 = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
                 origin = PrintOriginDiffs(originalOrigin, origin, "tp 2");
 #endif
                 localStationPlayerPosition.SetPositionAndRotation(position - posDiff, localPlayerRotation * Quaternion.Inverse(rotDiff));
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+                useStationSw.Start();
+#endif
                 localStation.UseStation(localPlayer);
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+                useStationSw.Stop();
+#endif
 #if PLATFORM_ATTACHMENT_DEBUG
                 origin = PrintOriginDiffs(originalOrigin, origin, "station 2");
 #else
+#if PLATFORM_ATTACHMENT_STOPWATCH
+                getTrackingDataSw.Start();
+#endif
                 origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+#if PLATFORM_ATTACHMENT_STOPWATCH
+                getTrackingDataSw.Stop();
+#endif
 #endif
                 Vector3 posDiff2 = origin.position - desiredOriginPos;
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+                exitStationSw.Start();
+                localStation.ExitStation(localPlayer);
+                exitStationSw.Stop();
+                tpSw.Start();
+#endif
                 localPlayer.TeleportTo(desiredOriginPos, desiredOriginRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+                tpSw.Stop();
+#endif
 #if PLATFORM_ATTACHMENT_DEBUG
                 origin = PrintOriginDiffs(originalOrigin, origin, "tp 3");
 #endif
                 localStationPlayerPosition.SetPositionAndRotation(position - posDiff - posDiff2, localPlayerRotation * Quaternion.Inverse(rotDiff));
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+                useStationSw.Start();
+#endif
                 localStation.UseStation(localPlayer);
+#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+                useStationSw.Stop();
+#endif
 #if PLATFORM_ATTACHMENT_DEBUG
                 origin = PrintOriginDiffs(originalOrigin, origin, "station 3");
                 positionErrorLastFrame = origin.position - desiredOriginPos;
@@ -284,7 +375,13 @@ namespace JanSharp
                 if (positionErrorLastFrame == Vector3.zero && rotationErrorLastFrame == Quaternion.identity)
                     break;
 #else
+#if PLATFORM_ATTACHMENT_STOPWATCH
+                getTrackingDataSw.Start();
+#endif
                 origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+#if PLATFORM_ATTACHMENT_STOPWATCH
+                getTrackingDataSw.Stop();
+#endif
                 if ((origin.position - desiredOriginPos) == Vector3.zero
                     && (Quaternion.Inverse(desiredOriginRot) * origin.rotation) == Quaternion.identity)
                     break;
