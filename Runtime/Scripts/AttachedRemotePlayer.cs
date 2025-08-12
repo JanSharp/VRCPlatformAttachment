@@ -312,6 +312,7 @@ namespace JanSharp
             Quaternion playerRotation = Quaternion.identity;
             bool updateTiming = false;
             // Requires 2 at <= 40 fps, 3 at 50 fps, 5 to 6 iterations at 60 fps, cannot test higher fps.
+            // Each iteration takes a bit more than 1 ms on my machine with this current implementation.
             for (int i = 0; i < 10; i++)
             {
                 player.TeleportTo(tpPos, tpRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: true);
