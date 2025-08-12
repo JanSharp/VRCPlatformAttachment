@@ -305,10 +305,12 @@ namespace JanSharp
 #endif
                 Vector3 posDiff = origin.position - desiredOriginPos;
                 Quaternion rotDiff = Quaternion.Inverse(desiredOriginRot) * origin.rotation;
+                Vector3 almostFinalPosition = position - posDiff;
+                Quaternion finalRotation = localPlayerRotation * Quaternion.Inverse(rotDiff);
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
                 tpSw.Start();
 #endif
-                localPlayer.TeleportTo(position - posDiff, localPlayerRotation * Quaternion.Inverse(rotDiff), VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: true);
+                localPlayer.TeleportTo(almostFinalPosition, finalRotation, VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: true);
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
                 tpSw.Stop();
 #endif
@@ -334,7 +336,7 @@ namespace JanSharp
 #if PLATFORM_ATTACHMENT_DEBUG
                 origin = PrintOriginDiffs(originalOrigin, origin, "tp 3");
 #endif
-                localStationPlayerPosition.SetPositionAndRotation(position - posDiff - posDiff2, localPlayerRotation * Quaternion.Inverse(rotDiff));
+                localStationPlayerPosition.SetPositionAndRotation(almostFinalPosition - posDiff2, finalRotation);
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
                 useStationSw.Start();
 #endif
