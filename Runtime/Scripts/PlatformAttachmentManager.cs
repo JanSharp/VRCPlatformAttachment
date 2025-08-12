@@ -46,8 +46,6 @@ namespace JanSharp
         private Vector3 positionErrorLastFunkyFrame;
         private Quaternion rotationErrorLastFunkyFrame;
 
-        private bool immobilized;
-
         private void Start()
         {
             localPlayer = Networking.LocalPlayer;
@@ -136,8 +134,6 @@ namespace JanSharp
             prevAttachablePlatform = null;
             naturalGripPreventionCollider.gameObject.SetActive(false);
             localPlayer.SetVelocity(localPlayer.GetVelocity() + additionalVelocity);
-            immobilized = false;
-            localPlayer.Immobilize(immobilized);
             if (localAttachedPlayerSync != null)
                 localAttachedPlayerSync.StopSyncLoop();
         }
@@ -155,9 +151,6 @@ namespace JanSharp
             additionalVelocity = (positionDiff / Time.deltaTime) * AdditionalVelocityNewWeight + (additionalVelocity * (1f - AdditionalVelocityNewWeight));
             prevLocalPos = prevPlatform.InverseTransformDirection(prevPlayerPos - prevPlatform.position);
             prevPlatformRotation = platformRotation;
-
-            immobilized = !immobilized;
-            // localPlayer.Immobilize(immobilized);
         }
 
         /// <summary>Handles quaternions where their forward vector is pointing straight up or down.</summary>
