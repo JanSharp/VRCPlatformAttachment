@@ -32,7 +32,7 @@ namespace JanSharp
         {
             player = Networking.GetOwner(this.gameObject);
             bool isLocal = player.isLocal;
-            station.PlayerMobility = isLocal ? VRCStation.Mobility.Mobile : VRCStation.Mobility.ImmobilizeForVehicle;
+            station.PlayerMobility = VRCStation.Mobility.ImmobilizeForVehicle;
             if (isLocal)
                 manager.SetLocalAttachedPlayerSync(this);
         }
