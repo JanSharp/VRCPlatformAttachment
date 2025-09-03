@@ -91,8 +91,8 @@ namespace JanSharp
 
         private void UpdateAttachment()
         {
-            interpolation.InterpolateLocalPosition(stationPlayerPosition, syncedLocalPosition, InterpolationDuration);
-            interpolation.InterpolateLocalRotation(stationPlayerPosition, syncedLocalRotation, InterpolationDuration);
+            interpolation.LerpLocalPosition(stationPlayerPosition, syncedLocalPosition, InterpolationDuration);
+            interpolation.LerpLocalRotation(stationPlayerPosition, syncedLocalRotation, InterpolationDuration);
         }
 
         private void Attach(uint platformId)
@@ -107,8 +107,8 @@ namespace JanSharp
         private void Detach()
         {
             attachedPlatformId = 0u;
-            interpolation.CancelLocalPositionInterpolation(stationPlayerPosition);
-            interpolation.CancelLocalRotationInterpolation(stationPlayerPosition);
+            interpolation.CancelPositionInterpolation(stationPlayerPosition);
+            interpolation.CancelRotationInterpolation(stationPlayerPosition);
             stationPlayerPosition.SetParent(null, worldPositionStays: false);
         }
 
