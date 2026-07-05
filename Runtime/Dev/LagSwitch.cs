@@ -12,24 +12,20 @@ namespace JanSharp
         private ToggleFieldWidgetData toggleWidget;
         private SliderFieldWidgetData fpsSliderWidget;
         private SliderFieldWidgetData lagSpikeSliderWidget;
-        private System.Diagnostics.Stopwatch stopwatch;
+        private System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
 
         public void Start()
         {
-            toggleWidget = widgetManager.NewToggleField("Lag Switch", false);
-            fpsSliderWidget = widgetManager.NewSliderField("FPS", 30f, 1f, 120f);
-            lagSpikeSliderWidget = widgetManager.NewSliderField("Lag Spike Seconds", 5f, 0f, 9f);
             valueEditor.Draw(new WidgetData[]
             {
-                toggleWidget,
-                fpsSliderWidget,
-                widgetManager.NewSpace(),
+                toggleWidget = widgetManager.NewToggleField("Lag Switch", false),
+                fpsSliderWidget = widgetManager.NewSliderField("FPS", 30f, 1f, 120f),
+                widgetManager.NewSpace().StdMoveWidget(),
                 widgetManager.NewButton("Lag Spike")
                     .SetListener(this, nameof(OnLagSpikeClick))
                     .StdMoveWidget(),
-                lagSpikeSliderWidget,
+                lagSpikeSliderWidget = widgetManager.NewSliderField("Lag Spike Seconds", 5f, 0f, 9f),
             });
-            stopwatch = new System.Diagnostics.Stopwatch();
         }
 
         public void Update()
