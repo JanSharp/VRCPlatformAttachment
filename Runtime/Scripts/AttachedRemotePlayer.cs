@@ -54,7 +54,7 @@ namespace JanSharp
 
         public void StopSyncLoop()
         {
-            station.ExitStation(player);
+            manager.TeleportPlayerOutOfStation();
             syncedAttachedPlatformId = 0u;
             attachedPlatform = null;
             shouldSyncLoopRunning = false;
