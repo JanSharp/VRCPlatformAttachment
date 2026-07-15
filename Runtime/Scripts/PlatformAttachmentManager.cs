@@ -12,7 +12,6 @@ namespace JanSharp
         [HideInInspector][SerializeField][SingletonReference] QuickDebugUI qd;
         public LayerMask layersToAttachTo;
         [Header("Internal")]
-        public Transform naturalGripPreventionCollider;
         public Transform originDebug;
 
         private VRCPlayerApi localPlayer;
@@ -32,16 +31,15 @@ namespace JanSharp
         [HideInInspector][SerializeField] private uint highestPlatformId;
 
         private bool isAttached;
-        private Vector3 prevPlayerPos;
-        private Vector3 prevLocalPos;
-        private Transform prevPlatform;
-        private AttachablePlatform prevAttachablePlatform;
-        private Quaternion prevPlatformRotation;
+        private Vector3 attachedLocalPosition;
+        private Quaternion attachedLocalRotation;
+        private Transform attachedPlatform;
+        private AttachablePlatform attachedAttachablePlatform;
         private Vector3 additionalVelocity;
         // the current frame's velocity is 70%, the prev velocity is 30%. And it repeats like that
         private const float AdditionalVelocityNewWeight = 0.35f;
 
-        private const int MaxTPIterations = 10;
+        // private const int MaxTPIterations = 10;
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
         private int funkyIterations;
         private double funkyTimingMs;
@@ -82,7 +80,7 @@ namespace JanSharp
             localStation = localAttachedPlayerSync.station;
             localStationPlayerPosition = localAttachedPlayerSync.stationPlayerPosition;
             if (isAttached)
-                localAttachedPlayerSync.BeginSyncLoop(prevAttachablePlatform);
+                localAttachedPlayerSync.BeginSyncLoop(attachedAttachablePlatform);
         }
 
         public AttachablePlatform GetPlatformFromId(uint id)
@@ -119,14 +117,13 @@ namespace JanSharp
                 radius,
                 Vector3.down,
                 out RaycastHit hit,
-                radius + 0.35f,
+                maxDistance: radius + 0.35f,
                 layersToAttachTo)) // QueryTriggerInteraction.UseGlobal
             {
                 platform = hit.transform;
-                naturalGripPreventionCollider.position = hit.point; // TODO: Make this tilt.
             }
 
-            if (isAttached && platform == prevPlatform)
+            if (isAttached && platform == attachedPlatform)
             {
                 ApplyPlatformMovement();
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
@@ -135,7 +132,7 @@ namespace JanSharp
 #endif
                 return;
             }
-            if (prevPlatform != null)
+            if (attachedPlatform != null)
                 Detach();
             if (platform != null)
                 Attach(platform);
@@ -169,13 +166,11 @@ namespace JanSharp
             if (attachablePlatform.id == 0u)
                 attachablePlatform.id = GetIdFromPlatform(attachablePlatform);
             isAttached = true;
-            prevPlayerPos = localPlayerPosition;
-            prevPlatform = platform;
-            prevAttachablePlatform = attachablePlatform;
-            prevLocalPos = platform.InverseTransformDirection(prevPlayerPos - platform.position);
-            prevPlatformRotation = platform.rotation;
+            attachedPlatform = platform;
+            attachedAttachablePlatform = attachablePlatform;
+            attachedLocalPosition = platform.InverseTransformPoint(localPlayerPosition);
+            attachedLocalRotation = Quaternion.Inverse(ProjectOntoYPlane(platform.rotation)) * localPlayer.GetRotation();
             additionalVelocity = Vector3.zero;
-            naturalGripPreventionCollider.gameObject.SetActive(true);
             if (localAttachedPlayerSync != null)
                 localAttachedPlayerSync.BeginSyncLoop(attachablePlatform);
         }
@@ -183,9 +178,8 @@ namespace JanSharp
         private void Detach()
         {
             isAttached = false;
-            prevPlatform = null;
-            prevAttachablePlatform = null;
-            naturalGripPreventionCollider.gameObject.SetActive(false);
+            attachedPlatform = null;
+            attachedAttachablePlatform = null;
             localPlayer.SetVelocity(localPlayer.GetVelocity() + additionalVelocity);
             if (localAttachedPlayerSync != null)
                 localAttachedPlayerSync.StopSyncLoop();
@@ -193,23 +187,25 @@ namespace JanSharp
 
         private void ApplyPlatformMovement()
         {
-            Vector3 positionDiff = prevPlatform.position + prevPlatform.TransformDirection(prevLocalPos) - prevPlayerPos;
-            Quaternion platformRotation = prevPlatform.rotation;
-            Quaternion rotationDiff = ProjectOntoYPlane(Quaternion.Inverse(prevPlatformRotation) * platformRotation);
-            localPlayerRotation = localPlayer.GetRotation();
-#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            getTrackingDataSw.Start();
-#endif
-            localPlayerOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            getTrackingDataSw.Stop();
-#endif
-            TeleportPlayer(localPlayerPosition + positionDiff, localPlayerRotation * rotationDiff, positionDiff, rotationDiff);
+            ApplyUserInput();
+            PositionLocalStation();
+            //             Vector3 positionDiff = attachedPlatform.position + attachedPlatform.TransformPoint(attachedLocalPosition) - prevPlayerPos;
+            //             Quaternion platformRotation = attachedPlatform.rotation;
+            //             Quaternion rotationDiff = ProjectOntoYPlane(Quaternion.Inverse(prevPlatformRotation) * platformRotation);
+            //             localPlayerRotation = localPlayer.GetRotation();
+            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+            //             getTrackingDataSw.Start();
+            // #endif
+            //             localPlayerOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+            //             getTrackingDataSw.Stop();
+            // #endif
+            //             TeleportPlayer(localPlayerPosition + positionDiff, localPlayerRotation * rotationDiff, positionDiff, rotationDiff);
 
-            prevPlayerPos = localPlayer.GetPosition();
-            additionalVelocity = (positionDiff / Time.deltaTime) * AdditionalVelocityNewWeight + (additionalVelocity * (1f - AdditionalVelocityNewWeight));
-            prevLocalPos = prevPlatform.InverseTransformDirection(prevPlayerPos - prevPlatform.position);
-            prevPlatformRotation = platformRotation;
+            //             prevPlayerPos = localPlayer.GetPosition();
+            //             additionalVelocity = (positionDiff / Time.deltaTime) * AdditionalVelocityNewWeight + (additionalVelocity * (1f - AdditionalVelocityNewWeight));
+            //             attachedLocalPosition = attachedPlatform.InverseTransformDirection(prevPlayerPos - attachedPlatform.position);
+            //             prevPlatformRotation = platformRotation;
         }
 
         /// <summary>Handles quaternions where their forward vector is pointing straight up or down.</summary>
@@ -226,25 +222,28 @@ namespace JanSharp
 
         public void UseLocalStation()
         {
-            localPlayerPosition = localPlayer.GetPosition();
-            localPlayerRotation = localPlayer.GetRotation();
-#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            getTrackingDataSw.Start();
-#endif
-            localPlayerOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            getTrackingDataSw.Stop();
-#endif
+            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+            //             getTrackingDataSw.Start();
+            // #endif
+            //             localPlayerOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+            //             getTrackingDataSw.Stop();
+            // #endif
             // Uses the teleport logic to prevent rotational jumps.
             // localStationPlayerPosition.SetParent(prevPlatform, worldPositionStays: false);
             // Cannot set parent as that would cause rotation around not just the y axis.
-            localStationPlayerPosition.SetPositionAndRotation(localPlayerPosition, localPlayerRotation);
+            PositionLocalStation();
             localStation.UseStation(localPlayer);
-            prevOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-            prevHead = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
-            prevPosition = localPlayerPosition;
-            prevRotation = localPlayerRotation;
+            // prevOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            // prevHead = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
             // TeleportPlayer(localPlayerPosition, localPlayerRotation);
+        }
+
+        private void PositionLocalStation()
+        {
+            localStationPlayerPosition.SetPositionAndRotation(
+                attachedPlatform.TransformPoint(attachedLocalPosition),
+                ProjectOntoYPlane(attachedPlatform.rotation) * attachedLocalRotation);
         }
 
 #if PLATFORM_ATTACHMENT_DEBUG
@@ -266,206 +265,229 @@ namespace JanSharp
         }
 #endif
 
-        private VRCPlayerApi.TrackingData prevOrigin;
-        private VRCPlayerApi.TrackingData prevHead;
-        private Vector3 prevPosition;
-        private Quaternion prevRotation;
+        // private VRCPlayerApi.TrackingData prevOrigin;
+        // private VRCPlayerApi.TrackingData prevHead;
+        // private Vector3 prevPosition;
+        // private Quaternion prevRotation;
 
-        private Vector3 currentMovementInput;
-        private float currentHorizontalMovement;
-        private float currentVerticalMovement;
+        private float inputMoveHorizontal;
+        private float inputMoveVertical;
+        private float inputLookHorizontal;
+
+        public override void InputMoveHorizontal(float value, UdonInputEventArgs args)
+        {
+            inputMoveHorizontal = value;
+        }
+
+        public override void InputMoveVertical(float value, UdonInputEventArgs args)
+        {
+            inputMoveVertical = value;
+        }
 
         public override void InputLookHorizontal(float value, UdonInputEventArgs args)
         {
+            inputLookHorizontal = value;
         }
 
         // public override void InputLookVertical(float value, UdonInputEventArgs args)
         // {
         // }
 
-        public override void InputMoveHorizontal(float value, UdonInputEventArgs args)
+        private void ApplyUserInput()
         {
-            currentMovementInput.x = value * localPlayer.GetStrafeSpeed();
-        }
+            float deltaTime = Time.deltaTime;
+            Vector3 movement = deltaTime * new Vector3(
+                inputMoveHorizontal * localPlayer.GetStrafeSpeed(),
+                0f,
+                inputMoveVertical * localPlayer.GetRunSpeed());
 
-        public override void InputMoveVertical(float value, UdonInputEventArgs args)
-        {
-            currentMovementInput.z = value * localPlayer.GetRunSpeed();
-        }
-
-        public void TeleportPlayer(Vector3 position, Quaternion rotation, Vector3 positionDiff, Quaternion rotationDiff)
-        {
-            // GetRoomAlignedTeleportTargetPosAndRot(position, rotation, out var desiredOriginPos, out var desiredOriginRot);
-
-            var origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
             var head = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
-            Vector3 movement = ProjectOntoYPlane(head.rotation) * currentMovementInput * Time.deltaTime;
 
-            // Quaternion prevOffset = Quaternion.Inverse(prevOrigin.rotation) * prevHead.rotation;
-            // Quaternion offset = Quaternion.Inverse(origin.rotation) * head.rotation;
-            // Quaternion headMovement = Quaternion.Inverse(prevOffset) * offset;
+            movement = ProjectOntoYPlane(head.rotation) * movement;
 
-            prevPosition += positionDiff
-                + prevOrigin.rotation * (Quaternion.Inverse(origin.rotation) * (head.position - origin.position)
-                    - Quaternion.Inverse(prevOrigin.rotation) * (prevHead.position - prevOrigin.position))
-                + movement;
-            prevRotation *= rotationDiff;
-            localStationPlayerPosition.SetPositionAndRotation(prevPosition, prevRotation);
-            //     * ProjectOntoYPlane(Quaternion.Inverse(prevHead.rotation)) * ProjectOntoYPlane(origin.rotation);
-            // stationPlayerPosition.SetPositionAndRotation(prevPosition, prevRotation);
+            Vector3 position = attachedPlatform.TransformPoint(attachedLocalPosition);
+            Quaternion rotation = ProjectOntoYPlane(attachedPlatform.rotation) * attachedLocalRotation;
 
-            // FIXME: Looking around with your head, or in desktop by moving the mouse, does not change the
-            // avatar root as that is tied to the station, however the station cannot be rotated due to the
-            // head or mouse movement as that would double the rotational movement.
-            // In VR this causes the head from rotating on its own while the body does not, and in desktop it
-            // prevents looking behind you entirely, you are locked to about 180 degrees of horizontal
-            // rotational movement.
+            position += movement;
+            rotation *= Quaternion.AngleAxis(deltaTime * inputLookHorizontal * 180f, Vector3.up);
 
-            // prevPosition = prevPosition +
-            //     prevOrigin.rotation * (Quaternion.Inverse(origin.rotation) * (head.position - origin.position)
-            //         - Quaternion.Inverse(prevOrigin.rotation) * (prevHead.position - prevOrigin.position))
-            //     + positionDiff;
-            // prevRotation = prevRotation * ProjectOntoYPlane(headMovement) * rotationDiff;
-
-            // station.ExitStation(player);
-            // manager.RoomAlignedTeleport(prevPosition, prevRotation, lerpOnRemote: true);
-            // stationPlayerPosition.SetPositionAndRotation(prevPosition, prevRotation);
-            // station.UseStation(player);
-
-            prevOrigin = origin;
-            prevHead = head;
-
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //             funkyTpSw.Reset();
-            //             funkyTpSw.Start();
-            //             bool updateTiming = false;
-            // #endif
-            // #if PLATFORM_ATTACHMENT_DEBUG
-            //             var originalOrigin = localPlayerOrigin;
-            //             Vector3 positionErrorLastFrame = Vector3.zero;
-            //             Quaternion rotationErrorLastFrame = Quaternion.identity;
-            // #endif
-            //             GetRoomAlignedTeleportTargetPosAndRot(position, rotation, out var desiredOriginPos, out var desiredOriginRot);
-            //             // Only requires a single iteration 99.9% of the time. However when the head is tilted to the left
-            //             // or right, when looking up and down there is a single frame at some threshold where it requires
-            //             // multiple iterations to fully undo unintentional movement and rotation induced by entering the
-            //             // station.
-            //             // Requires 2 at <= 40 fps, 3 at 50 fps, 5 to 6 iterations at 60 fps, cannot test higher fps.
-            //             // Each iteration takes a bit more than 1 ms on my machine with this current implementation.
-            //             for (int i = 0; i < MaxTPIterations; i++)
-            //             {
-            //                 // Teleports also make the player exist the station.
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //                 exitStationSw.Start();
-            //                 localStation.ExitStation(localPlayer);
-            //                 exitStationSw.Stop();
-            // #endif
-            // #if PLATFORM_ATTACHMENT_DEBUG
-            //                 var desiredOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-            // #endif
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //                 tpSw.Start();
-            // #endif
-            //                 localPlayer.TeleportTo(position, localPlayerRotation, VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: false);
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //                 tpSw.Stop();
-            // #endif
-            // #if PLATFORM_ATTACHMENT_DEBUG
-            //                 var origin = PrintOriginDiffs(originalOrigin, desiredOrigin, "tp 1");
-            // #else
-            // #if PLATFORM_ATTACHMENT_STOPWATCH
-            //                 getTrackingDataSw.Start();
-            // #endif
-            //                 var origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-            // #if PLATFORM_ATTACHMENT_STOPWATCH
-            //                 getTrackingDataSw.Stop();
-            // #endif
-            // #endif
-            //                 Vector3 posDiff = origin.position - desiredOriginPos;
-            //                 Quaternion rotDiff = Quaternion.Inverse(desiredOriginRot) * origin.rotation;
-            //                 Vector3 almostFinalPosition = position - posDiff;
-            //                 Quaternion finalRotation = localPlayerRotation * Quaternion.Inverse(rotDiff);
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //                 tpSw.Start();
-            // #endif
-            //                 localPlayer.TeleportTo(almostFinalPosition, finalRotation, VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: false);
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //                 tpSw.Stop();
-            // #endif
-            // #if PLATFORM_ATTACHMENT_DEBUG
-            //                 origin = PrintOriginDiffs(originalOrigin, origin, "tp 2");
-            // #else
-            // #if PLATFORM_ATTACHMENT_STOPWATCH
-            //                 getTrackingDataSw.Start();
-            // #endif
-            //                 origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-            // #if PLATFORM_ATTACHMENT_STOPWATCH
-            //                 getTrackingDataSw.Stop();
-            // #endif
-            // #endif
-            //                 Vector3 posDiff2 = origin.position - desiredOriginPos;
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //                 tpSw.Start();
-            // #endif
-            //                 localPlayer.TeleportTo(desiredOriginPos, desiredOriginRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: false);
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //                 tpSw.Stop();
-            // #endif
-            // #if PLATFORM_ATTACHMENT_DEBUG
-            //                 origin = PrintOriginDiffs(originalOrigin, origin, "tp 3");
-            // #endif
-            //                 localStationPlayerPosition.SetPositionAndRotation(almostFinalPosition - posDiff2, finalRotation);
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //                 useStationSw.Start();
-            // #endif
-            //                 localStation.UseStation(localPlayer);
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //                 useStationSw.Stop();
-            // #endif
-            // #if PLATFORM_ATTACHMENT_DEBUG
-            //                 origin = PrintOriginDiffs(originalOrigin, origin, "station 3");
-            //                 positionErrorLastFrame = origin.position - desiredOriginPos;
-            //                 rotationErrorLastFrame = Quaternion.Inverse(desiredOriginRot) * origin.rotation;
-            //                 qd.ShowForOneFrame(this, $"position error", $"{positionErrorLastFrame:f3}");
-            //                 qd.ShowForOneFrame(this, $"rotation error", $"{rotationErrorLastFrame.eulerAngles:f3}");
-            //                 if (positionErrorLastFrame == Vector3.zero && rotationErrorLastFrame == Quaternion.identity)
-            //                     break;
-            // #else
-            // #if PLATFORM_ATTACHMENT_STOPWATCH
-            //                 getTrackingDataSw.Start();
-            // #endif
-            //                 origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-            // #if PLATFORM_ATTACHMENT_STOPWATCH
-            //                 getTrackingDataSw.Stop();
-            // #endif
-            //                 if ((origin.position - desiredOriginPos) == Vector3.zero
-            //                     && (Quaternion.Inverse(desiredOriginRot) * origin.rotation) == Quaternion.identity)
-            //                     break;
-            // #endif
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //                 funkyIterations = System.Math.Min(MaxTPIterations, i + 2);
-            //                 updateTiming = true;
-            // #endif
-            //             }
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //             funkyTpSw.Stop();
-            //             if (updateTiming)
-            //             {
-            //                 funkyTimingMs = funkyTpSw.Elapsed.TotalMilliseconds;
-            // #endif
-            // #if PLATFORM_ATTACHMENT_DEBUG
-            //                 positionErrorLastFunkyFrame = positionErrorLastFrame;
-            //                 rotationErrorLastFunkyFrame = rotationErrorLastFrame;
-            // #endif
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //             }
-            //             qd.ShowForOneFrame(this, "funkyIterations", $"{funkyIterations:d}");
-            //             qd.ShowForOneFrame(this, "funkyTimingMs", $"{funkyTimingMs:f3}");
-            // #endif
-            // #if PLATFORM_ATTACHMENT_DEBUG
-            //             qd.ShowForOneFrame(this, "funkyPositionErrorLastFrame", $"{positionErrorLastFunkyFrame:f3}");
-            //             qd.ShowForOneFrame(this, "funkyRotationErrorLastFrame", $"{rotationErrorLastFunkyFrame.eulerAngles:f3}");
-            // #endif
+            attachedLocalPosition = attachedPlatform.InverseTransformPoint(position);
+            attachedLocalRotation = Quaternion.Inverse(ProjectOntoYPlane(attachedPlatform.rotation)) * rotation;
         }
+
+        // public void TeleportPlayer(Vector3 position, Quaternion rotation, Vector3 positionDiff, Quaternion rotationDiff)
+        // {
+        //     // GetRoomAlignedTeleportTargetPosAndRot(position, rotation, out var desiredOriginPos, out var desiredOriginRot);
+
+        //     var origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+        //     var head = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
+        //     Vector3 movement = ProjectOntoYPlane(head.rotation) * currentMovementInput * Time.deltaTime;
+
+        //     // Quaternion prevOffset = Quaternion.Inverse(prevOrigin.rotation) * prevHead.rotation;
+        //     // Quaternion offset = Quaternion.Inverse(origin.rotation) * head.rotation;
+        //     // Quaternion headMovement = Quaternion.Inverse(prevOffset) * offset;
+
+        //     prevPosition += positionDiff
+        //         + prevOrigin.rotation * (Quaternion.Inverse(origin.rotation) * (head.position - origin.position)
+        //             - Quaternion.Inverse(prevOrigin.rotation) * (prevHead.position - prevOrigin.position))
+        //         + movement;
+        //     prevRotation *= rotationDiff;
+        //     localStationPlayerPosition.SetPositionAndRotation(prevPosition, prevRotation);
+        //     //     * ProjectOntoYPlane(Quaternion.Inverse(prevHead.rotation)) * ProjectOntoYPlane(origin.rotation);
+        //     // stationPlayerPosition.SetPositionAndRotation(prevPosition, prevRotation);
+
+        //     // FIXME: Looking around with your head, or in desktop by moving the mouse, does not change the
+        //     // avatar root as that is tied to the station, however the station cannot be rotated due to the
+        //     // head or mouse movement as that would double the rotational movement.
+        //     // In VR this causes the head from rotating on its own while the body does not, and in desktop it
+        //     // prevents looking behind you entirely, you are locked to about 180 degrees of horizontal
+        //     // rotational movement.
+
+        //     // prevPosition = prevPosition +
+        //     //     prevOrigin.rotation * (Quaternion.Inverse(origin.rotation) * (head.position - origin.position)
+        //     //         - Quaternion.Inverse(prevOrigin.rotation) * (prevHead.position - prevOrigin.position))
+        //     //     + positionDiff;
+        //     // prevRotation = prevRotation * ProjectOntoYPlane(headMovement) * rotationDiff;
+
+        //     // station.ExitStation(player);
+        //     // manager.RoomAlignedTeleport(prevPosition, prevRotation, lerpOnRemote: true);
+        //     // stationPlayerPosition.SetPositionAndRotation(prevPosition, prevRotation);
+        //     // station.UseStation(player);
+
+        //     prevOrigin = origin;
+        //     prevHead = head;
+
+        //     // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+        //     //             funkyTpSw.Reset();
+        //     //             funkyTpSw.Start();
+        //     //             bool updateTiming = false;
+        //     // #endif
+        //     // #if PLATFORM_ATTACHMENT_DEBUG
+        //     //             var originalOrigin = localPlayerOrigin;
+        //     //             Vector3 positionErrorLastFrame = Vector3.zero;
+        //     //             Quaternion rotationErrorLastFrame = Quaternion.identity;
+        //     // #endif
+        //     //             GetRoomAlignedTeleportTargetPosAndRot(position, rotation, out var desiredOriginPos, out var desiredOriginRot);
+        //     //             // Only requires a single iteration 99.9% of the time. However when the head is tilted to the left
+        //     //             // or right, when looking up and down there is a single frame at some threshold where it requires
+        //     //             // multiple iterations to fully undo unintentional movement and rotation induced by entering the
+        //     //             // station.
+        //     //             // Requires 2 at <= 40 fps, 3 at 50 fps, 5 to 6 iterations at 60 fps, cannot test higher fps.
+        //     //             // Each iteration takes a bit more than 1 ms on my machine with this current implementation.
+        //     //             for (int i = 0; i < MaxTPIterations; i++)
+        //     //             {
+        //     //                 // Teleports also make the player exist the station.
+        //     // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 exitStationSw.Start();
+        //     //                 localStation.ExitStation(localPlayer);
+        //     //                 exitStationSw.Stop();
+        //     // #endif
+        //     // #if PLATFORM_ATTACHMENT_DEBUG
+        //     //                 var desiredOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+        //     // #endif
+        //     // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 tpSw.Start();
+        //     // #endif
+        //     //                 localPlayer.TeleportTo(position, localPlayerRotation, VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: false);
+        //     // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 tpSw.Stop();
+        //     // #endif
+        //     // #if PLATFORM_ATTACHMENT_DEBUG
+        //     //                 var origin = PrintOriginDiffs(originalOrigin, desiredOrigin, "tp 1");
+        //     // #else
+        //     // #if PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 getTrackingDataSw.Start();
+        //     // #endif
+        //     //                 var origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+        //     // #if PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 getTrackingDataSw.Stop();
+        //     // #endif
+        //     // #endif
+        //     //                 Vector3 posDiff = origin.position - desiredOriginPos;
+        //     //                 Quaternion rotDiff = Quaternion.Inverse(desiredOriginRot) * origin.rotation;
+        //     //                 Vector3 almostFinalPosition = position - posDiff;
+        //     //                 Quaternion finalRotation = localPlayerRotation * Quaternion.Inverse(rotDiff);
+        //     // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 tpSw.Start();
+        //     // #endif
+        //     //                 localPlayer.TeleportTo(almostFinalPosition, finalRotation, VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: false);
+        //     // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 tpSw.Stop();
+        //     // #endif
+        //     // #if PLATFORM_ATTACHMENT_DEBUG
+        //     //                 origin = PrintOriginDiffs(originalOrigin, origin, "tp 2");
+        //     // #else
+        //     // #if PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 getTrackingDataSw.Start();
+        //     // #endif
+        //     //                 origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+        //     // #if PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 getTrackingDataSw.Stop();
+        //     // #endif
+        //     // #endif
+        //     //                 Vector3 posDiff2 = origin.position - desiredOriginPos;
+        //     // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 tpSw.Start();
+        //     // #endif
+        //     //                 localPlayer.TeleportTo(desiredOriginPos, desiredOriginRot, VRC_SceneDescriptor.SpawnOrientation.AlignRoomWithSpawnPoint, lerpOnRemote: false);
+        //     // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 tpSw.Stop();
+        //     // #endif
+        //     // #if PLATFORM_ATTACHMENT_DEBUG
+        //     //                 origin = PrintOriginDiffs(originalOrigin, origin, "tp 3");
+        //     // #endif
+        //     //                 localStationPlayerPosition.SetPositionAndRotation(almostFinalPosition - posDiff2, finalRotation);
+        //     // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 useStationSw.Start();
+        //     // #endif
+        //     //                 localStation.UseStation(localPlayer);
+        //     // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 useStationSw.Stop();
+        //     // #endif
+        //     // #if PLATFORM_ATTACHMENT_DEBUG
+        //     //                 origin = PrintOriginDiffs(originalOrigin, origin, "station 3");
+        //     //                 positionErrorLastFrame = origin.position - desiredOriginPos;
+        //     //                 rotationErrorLastFrame = Quaternion.Inverse(desiredOriginRot) * origin.rotation;
+        //     //                 qd.ShowForOneFrame(this, $"position error", $"{positionErrorLastFrame:f3}");
+        //     //                 qd.ShowForOneFrame(this, $"rotation error", $"{rotationErrorLastFrame.eulerAngles:f3}");
+        //     //                 if (positionErrorLastFrame == Vector3.zero && rotationErrorLastFrame == Quaternion.identity)
+        //     //                     break;
+        //     // #else
+        //     // #if PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 getTrackingDataSw.Start();
+        //     // #endif
+        //     //                 origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+        //     // #if PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 getTrackingDataSw.Stop();
+        //     // #endif
+        //     //                 if ((origin.position - desiredOriginPos) == Vector3.zero
+        //     //                     && (Quaternion.Inverse(desiredOriginRot) * origin.rotation) == Quaternion.identity)
+        //     //                     break;
+        //     // #endif
+        //     // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+        //     //                 funkyIterations = System.Math.Min(MaxTPIterations, i + 2);
+        //     //                 updateTiming = true;
+        //     // #endif
+        //     //             }
+        //     // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+        //     //             funkyTpSw.Stop();
+        //     //             if (updateTiming)
+        //     //             {
+        //     //                 funkyTimingMs = funkyTpSw.Elapsed.TotalMilliseconds;
+        //     // #endif
+        //     // #if PLATFORM_ATTACHMENT_DEBUG
+        //     //                 positionErrorLastFunkyFrame = positionErrorLastFrame;
+        //     //                 rotationErrorLastFunkyFrame = rotationErrorLastFrame;
+        //     // #endif
+        //     // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
+        //     //             }
+        //     //             qd.ShowForOneFrame(this, "funkyIterations", $"{funkyIterations:d}");
+        //     //             qd.ShowForOneFrame(this, "funkyTimingMs", $"{funkyTimingMs:f3}");
+        //     // #endif
+        //     // #if PLATFORM_ATTACHMENT_DEBUG
+        //     //             qd.ShowForOneFrame(this, "funkyPositionErrorLastFrame", $"{positionErrorLastFunkyFrame:f3}");
+        //     //             qd.ShowForOneFrame(this, "funkyRotationErrorLastFrame", $"{rotationErrorLastFunkyFrame.eulerAngles:f3}");
+        //     // #endif
+        // }
     }
 }
