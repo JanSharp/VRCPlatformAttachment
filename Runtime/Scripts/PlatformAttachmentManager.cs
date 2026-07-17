@@ -31,8 +31,8 @@ namespace JanSharp
         [HideInInspector][SerializeField] private uint highestPlatformId;
 
         private bool isAttached;
-        private Vector3 attachedLocalPosition;
-        private Quaternion attachedLocalRotation;
+        [System.NonSerialized] public Vector3 attachedLocalPosition;
+        [System.NonSerialized] public Quaternion attachedLocalRotation;
         private Transform attachedPlatform;
         private AttachablePlatform attachedAttachablePlatform;
         private Vector3 additionalVelocity;
@@ -95,8 +95,8 @@ namespace JanSharp
             return index < 0 ? 0u : allPlatformIds[index];
         }
 
-        [OnTrulyPostLateUpdate]
-        public void OnTrulyPostLateUpdate()
+        // [OnTrulyPostLateUpdate]
+        private void LateUpdate()
         {
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
             totalSw.Start();
@@ -113,11 +113,11 @@ namespace JanSharp
             float radius = LocalPlayerCapsule.GetRadius();
             Transform platform = null;
             if (Physics.SphereCast(
-                localPlayerPosition + Vector3.up * (radius + 0.1f),
-                isAttached ? radius + 0.05f : radius,
+                localPlayerPosition + Vector3.up * (radius + 0.15f),
+                isAttached ? radius + 0.1f : radius + 0.05f,
                 Vector3.down,
                 out RaycastHit hit,
-                maxDistance: isAttached ? radius + 1f : radius + 0.15f,
+                maxDistance: isAttached ? radius + 1f : radius + 0.40f,
                 layersToAttachTo)) // QueryTriggerInteraction.UseGlobal
             {
                 platform = hit.transform;
@@ -160,6 +160,9 @@ namespace JanSharp
 
         private void Attach(Transform platform)
         {
+#if PLATFORM_ATTACHMENT_DEBUG
+            Debug.Log($"[PlatformAttachmentDebug] Manager  {nameof(Attach)}");
+#endif
             AttachablePlatform attachablePlatform = platform.GetComponent<AttachablePlatform>();
             if (attachablePlatform == null)
                 return;
@@ -177,6 +180,9 @@ namespace JanSharp
 
         private void Detach()
         {
+#if PLATFORM_ATTACHMENT_DEBUG
+            Debug.Log($"[PlatformAttachmentDebug] Manager  {nameof(Detach)}");
+#endif
             isAttached = false;
             attachedPlatform = null;
             attachedAttachablePlatform = null;
@@ -232,10 +238,12 @@ namespace JanSharp
             // Uses the teleport logic to prevent rotational jumps.
             // localStationPlayerPosition.SetParent(prevPlatform, worldPositionStays: false);
             // Cannot set parent as that would cause rotation around not just the y axis.
+            localStationPlayerPosition.SetPositionAndRotation(localPlayer.GetPosition(), localPlayer.GetRotation());
+            localStation.UseStation(localPlayer);
             MoveLocalStationToAttachedLocation();
-            TeleportPlayerIntoStation(localPlayer.GetPosition(), localPlayer.GetRotation());
-            localPlayer.SetVelocity(Vector3.zero);
-            localPlayer.Immobilize(false);
+            // TeleportPlayerIntoStation(localPlayer.GetPosition(), localPlayer.GetRotation());
+            // localPlayer.SetVelocity(Vector3.zero);
+            // localPlayer.Immobilize(false);
             // prevOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
             // prevHead = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
             // TeleportPlayer(localPlayerPosition, localPlayerRotation);
@@ -314,11 +322,16 @@ namespace JanSharp
             attachedLocalPosition = attachedPlatform.InverseTransformPoint(position);
             attachedLocalRotation = Quaternion.Inverse(ProjectOntoYPlane(attachedPlatform.rotation)) * rotation;
 
-            localPlayer.SetVelocity(velocity);
+            // Doing this is good when in half body, but in full body it locks the avatar oddly, it does not
+            // follow trackers anymore.
+            // localPlayer.SetVelocity(velocity);
         }
 
         public void TeleportPlayerOutOfStation()
         {
+#if PLATFORM_ATTACHMENT_DEBUG
+            Debug.Log($"[PlatformAttachmentDebug] Manager  {nameof(TeleportPlayerOutOfStation)}");
+#endif
             var headPre = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
             localStation.ExitStation(localPlayer);
             var headPost = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
@@ -334,6 +347,9 @@ namespace JanSharp
 
         public void TeleportPlayerIntoStation(Vector3 position, Quaternion rotation)
         {
+#if PLATFORM_ATTACHMENT_DEBUG
+            Debug.Log($"[PlatformAttachmentDebug] Manager  {nameof(TeleportPlayerIntoStation)}");
+#endif
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
             funkyTpSw.Reset();
             funkyTpSw.Start();

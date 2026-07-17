@@ -9,6 +9,9 @@ namespace JanSharp
     {
         [HideInInspector][SerializeField][SingletonReference] PlatformAttachmentManager manager;
         [HideInInspector][SerializeField][SingletonReference] InterpolationManager interpolation;
+#if PLATFORM_ATTACHMENT_DEBUG
+        [HideInInspector][SerializeField][SingletonReference] QuickDebugUI qd;
+#endif
 
         public VRC.SDK3.Components.VRCStation station;
         public Transform stationPlayerPosition;
@@ -18,7 +21,7 @@ namespace JanSharp
 
         private VRCPlayerApi player;
         // Local
-        private bool shouldSyncLoopRunning = false;
+        private bool shouldSyncLoopBeRunning = false;
         private bool isSyncLoopRunning = false;
         private Transform attachedPlatform;
         // Local to Remote
@@ -30,6 +33,9 @@ namespace JanSharp
 
         public void Start()
         {
+#if PLATFORM_ATTACHMENT_DEBUG
+            Debug.Log($"[PlatformAttachmentDebug] {name}  {nameof(Start)}");
+#endif
             player = Networking.GetOwner(this.gameObject);
             bool isLocal = player.isLocal;
             station.PlayerMobility = VRCStation.Mobility.ImmobilizeForVehicle;
@@ -41,29 +47,38 @@ namespace JanSharp
 
         public void BeginSyncLoop(AttachablePlatform attachedPlatform)
         {
+#if PLATFORM_ATTACHMENT_DEBUG
+            Debug.Log($"[PlatformAttachmentDebug] {name}  {nameof(BeginSyncLoop)} - attachedPlatform.id: {attachedPlatform.id}, shouldSyncLoopBeRunning: {shouldSyncLoopBeRunning}, isSyncLoopRunning: {isSyncLoopRunning}");
+#endif
             syncedAttachedPlatformId = attachedPlatform.id;
             this.attachedPlatform = attachedPlatform.transform;
             manager.UseLocalStation();
             RequestSerialization();
+            shouldSyncLoopBeRunning = true;
             if (isSyncLoopRunning)
                 return;
-            shouldSyncLoopRunning = true;
             isSyncLoopRunning = true;
             SendCustomEventDelayedSeconds(nameof(SyncLoop), SyncLoopInterval);
         }
 
         public void StopSyncLoop()
         {
+#if PLATFORM_ATTACHMENT_DEBUG
+            Debug.Log($"[PlatformAttachmentDebug] {name}  {nameof(StopSyncLoop)} - syncedAttachedPlatformId: {syncedAttachedPlatformId}, shouldSyncLoopBeRunning: {shouldSyncLoopBeRunning}, isSyncLoopRunning: {isSyncLoopRunning}");
+#endif
             manager.TeleportPlayerOutOfStation();
             syncedAttachedPlatformId = 0u;
             attachedPlatform = null;
-            shouldSyncLoopRunning = false;
+            shouldSyncLoopBeRunning = false;
             RequestSerialization();
         }
 
         public void SyncLoop()
         {
-            if (!shouldSyncLoopRunning)
+            // #if PLATFORM_ATTACHMENT_DEBUG
+            //             Debug.Log($"[PlatformAttachmentDebug] {name}  {nameof(SyncLoop)} - shouldSyncLoopBeRunning: {shouldSyncLoopBeRunning}, isSyncLoopRunning: {isSyncLoopRunning}");
+            // #endif
+            if (!shouldSyncLoopBeRunning)
             {
                 isSyncLoopRunning = false;
                 return;
@@ -74,6 +89,9 @@ namespace JanSharp
 
         public override void OnPreSerialization()
         {
+            // #if PLATFORM_ATTACHMENT_DEBUG
+            //             Debug.Log($"[PlatformAttachmentDebug] {name}  {nameof(OnPreSerialization)} - syncedAttachedPlatformId: {syncedAttachedPlatformId}, syncedLocalPosition: {syncedLocalPosition}");
+            // #endif
             if (syncedAttachedPlatformId == 0u)
                 return;
             if (attachedPlatform == null)
@@ -81,22 +99,31 @@ namespace JanSharp
                 StopSyncLoop();
                 return;
             }
-            syncedLocalPosition = attachedPlatform.InverseTransformPoint(player.GetPosition());
-            syncedLocalRotation = Quaternion.Inverse(attachedPlatform.rotation) * player.GetRotation();
+            syncedLocalPosition = manager.attachedLocalPosition;
+            syncedLocalRotation = manager.attachedLocalRotation;
+            // #if PLATFORM_ATTACHMENT_DEBUG
+            //             qd.ShowForOneFrame(this, "OnPreSerialization", $"syncedLocalPosition: {syncedLocalPosition}");
+            // #endif
         }
 
         #endregion
 
         #region Remote
 
-        private void UpdateAttachment()
+        private void UpdateRemoteAttachment()
         {
             interpolation.LerpLocalPosition(stationPlayerPosition, syncedLocalPosition, InterpolationDuration);
             interpolation.LerpLocalRotation(stationPlayerPosition, syncedLocalRotation, InterpolationDuration);
+#if PLATFORM_ATTACHMENT_DEBUG
+            qd.ShowForOneFrame(this, "UpdateRemoteAttachment", $"syncedLocalPosition: {syncedLocalPosition}");
+#endif
         }
 
-        private void Attach(uint platformId)
+        private void AttachRemote(uint platformId)
         {
+#if PLATFORM_ATTACHMENT_DEBUG
+            Debug.Log($"[PlatformAttachmentDebug] {name}  {nameof(AttachRemote)} - platformId: {platformId}");
+#endif
             attachedPlatformId = platformId;
             AttachablePlatform platform = manager.GetPlatformFromId(platformId);
             stationPlayerPosition.SetParent(platform.transform, worldPositionStays: false);
@@ -104,8 +131,11 @@ namespace JanSharp
             stationPlayerPosition.localRotation = syncedLocalRotation;
         }
 
-        private void Detach()
+        private void DetachRemote()
         {
+#if PLATFORM_ATTACHMENT_DEBUG
+            Debug.Log($"[PlatformAttachmentDebug] {name}  {nameof(DetachRemote)} - attachedPlatformId: {attachedPlatformId}");
+#endif
             attachedPlatformId = 0u;
             interpolation.CancelPositionInterpolation(stationPlayerPosition);
             interpolation.CancelRotationInterpolation(stationPlayerPosition);
@@ -114,17 +144,20 @@ namespace JanSharp
 
         public override void OnDeserialization()
         {
+            // #if PLATFORM_ATTACHMENT_DEBUG
+            //             Debug.Log($"[PlatformAttachmentDebug] {name}  {nameof(OnDeserialization)} - syncedAttachedPlatformId: {syncedAttachedPlatformId}, syncedLocalPosition: {syncedLocalPosition}");
+            // #endif
             if (!Utilities.IsValid(player))
                 return;
             if (syncedAttachedPlatformId == attachedPlatformId)
             {
-                UpdateAttachment();
+                UpdateRemoteAttachment();
                 return;
             }
             if (attachedPlatformId != 0u)
-                Detach();
+                DetachRemote();
             if (syncedAttachedPlatformId != 0u)
-                Attach(syncedAttachedPlatformId);
+                AttachRemote(syncedAttachedPlatformId);
         }
 
         #endregion
