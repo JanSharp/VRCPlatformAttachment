@@ -13,6 +13,7 @@ namespace JanSharp
         public LayerMask layersToAttachTo;
         [Header("Internal")]
         public Transform originDebug;
+        public Transform avatarRootDebug;
 
         private VRCPlayerApi localPlayer;
         private AttachedRemotePlayer localAttachedPlayerSync;
@@ -111,6 +112,16 @@ namespace JanSharp
                 originDebug.SetPositionAndRotation(origin.position, origin.rotation);
             qd.ShowForOneFrame(this, "Origin Position", origin.position.ToString("f3"));
             qd.ShowForOneFrame(this, "Origin Rotation", origin.rotation.eulerAngles.ToString("f3"));
+            //
+            var avatarRoot = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.AvatarRoot);
+            if (avatarRootDebug != null)
+            {
+                // Appears to be effectively following the head, but of course down on the ground level.
+                avatarRootDebug.SetPositionAndRotation(avatarRoot.position, avatarRoot.rotation);
+                // Similarly following the head.
+                // avatarRootDebug.SetPositionAndRotation(localPlayer.GetPosition(), localPlayer.GetRotation());
+                // But in both of these cases, once in a station they have an unchanging offset to the station.
+            }
 #endif
 
             localPlayerPosition = localPlayer.GetPosition();
