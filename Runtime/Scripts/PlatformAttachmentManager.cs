@@ -18,6 +18,10 @@ namespace JanSharp
         private AttachedRemotePlayer localAttachedPlayerSync;
         private VRC.SDK3.Components.VRCStation localStation;
         private Transform localStationPlayerPosition;
+        // private Vector3 stationPositionLocalToOrigin;
+        // private Quaternion stationRotationLocalToOrigin;
+        // private Vector3 originPositionLocalToStation;
+        // private Quaternion originRotationLocalToStation;
         /// <summary>
         /// <para>Set at the beginning of <see cref="OnTrulyPostLateUpdate"/>.</para>
         /// </summary>
@@ -228,32 +232,62 @@ namespace JanSharp
 
         public void UseLocalStation()
         {
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //             getTrackingDataSw.Start();
-            // #endif
-            //             localPlayerOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //             getTrackingDataSw.Stop();
-            // #endif
-            // Uses the teleport logic to prevent rotational jumps.
-            // localStationPlayerPosition.SetParent(prevPlatform, worldPositionStays: false);
-            // Cannot set parent as that would cause rotation around not just the y axis.
-            localStationPlayerPosition.SetPositionAndRotation(localPlayer.GetPosition(), localPlayer.GetRotation());
-            localStation.UseStation(localPlayer);
-            MoveLocalStationToAttachedLocation();
-            // TeleportPlayerIntoStation(localPlayer.GetPosition(), localPlayer.GetRotation());
-            // localPlayer.SetVelocity(Vector3.zero);
-            // localPlayer.Immobilize(false);
-            // prevOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-            // prevHead = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
-            // TeleportPlayer(localPlayerPosition, localPlayerRotation);
+            // localStationPlayerPosition.SetPositionAndRotation(localPlayer.GetPosition(), localPlayer.GetRotation());
+            // localStation.UseStation(localPlayer);
+            // localStationPlayerPosition.SetPositionAndRotation(
+            //     attachedPlatform.TransformPoint(attachedLocalPosition),
+            //     ProjectOntoYPlane(attachedPlatform.rotation) * attachedLocalRotation);
+
+            TeleportPlayerIntoStation(localPlayer.GetPosition(), localPlayer.GetRotation());
+
+            // Vector3 stationPosition = localStationPlayerPosition.position;
+            // Quaternion stationRotation = localStationPlayerPosition.rotation;
+            // var origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+
+            // Quaternion inverseRotation = Quaternion.Inverse(origin.rotation);
+            // stationPositionLocalToOrigin = inverseRotation * (stationPosition - origin.position);
+            // stationRotationLocalToOrigin = inverseRotation * stationRotation;
+
+            // inverseRotation = Quaternion.Inverse(stationRotation);
+            // originPositionLocalToStation = inverseRotation * (origin.position - stationPosition);
+            // originRotationLocalToStation = inverseRotation * origin.rotation;
         }
 
         private void MoveLocalStationToAttachedLocation()
         {
-            localStationPlayerPosition.SetPositionAndRotation(
-                attachedPlatform.TransformPoint(attachedLocalPosition),
-                ProjectOntoYPlane(attachedPlatform.rotation) * attachedLocalRotation);
+            Vector3 position = attachedPlatform.TransformPoint(attachedLocalPosition);
+            Quaternion rotation = ProjectOntoYPlane(attachedPlatform.rotation) * attachedLocalRotation;
+
+            // Vector3 desiredOriginPosition = position + rotation * originPositionLocalToStation;
+            // Quaternion desiredOriginRotation = rotation * originRotationLocalToStation;
+
+            // var preOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            localStationPlayerPosition.SetPositionAndRotation(position, rotation);
+            // var origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
+            // qd.ShowForOneFrame(this, "moving station origin diff", (preOrigin.position - origin.position).ToString());
+            // // This ^ always shows 0 0 0. That's a problem. That means moving the station player position does
+            // // not instantly move the player, which makes trying to cancel out VRChat's stupid jitter very
+            // // difficult if not impossible.
+
+            // Vector3 positionOffset = origin.position - desiredOriginPosition;
+            // Quaternion rotationOffset = Quaternion.Inverse(origin.rotation) * desiredOriginRotation;
+
+            // localStationPlayerPosition.SetPositionAndRotation(
+            //     position + positionOffset,
+            //     rotation);
+
+            // Quaternion inverseRotation = Quaternion.Inverse(origin.rotation);
+            // Vector3 actualStationPositionLocalToOrigin = inverseRotation * (position - origin.position);
+            // Quaternion actualStationRotationLocalToOrigin = inverseRotation * rotation;
+            // Vector3 positionOffset = origin.rotation * (stationPositionLocalToOrigin - actualStationPositionLocalToOrigin);
+            // Quaternion rotationOffset = Quaternion.Inverse(actualStationRotationLocalToOrigin) * stationRotationLocalToOrigin;
+
+            // localStationPlayerPosition.SetPositionAndRotation(
+            //     position + positionOffset,
+            //     rotation);
+            // // localStationPlayerPosition.SetPositionAndRotation(
+            // //     attachedPlatform.TransformPoint(attachedLocalPosition) + positionOffset,
+            // //     ProjectOntoYPlane(attachedPlatform.rotation) * attachedLocalRotation * rotationOffset);
         }
 
 #if PLATFORM_ATTACHMENT_DEBUG
