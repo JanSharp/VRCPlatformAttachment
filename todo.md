@@ -9,3 +9,58 @@
   - By using stations this luckily becomes a non issue. Legs are no longer drifting behind, and moving around plays the walking animation. Like this is genuine luck
 - [ ] testing with 2 people in desktop works just fine, in live session with 40+ people it broke
 - [ ] the station approach requires implementing gravity, velocity and jumping manually
+
+- [ ] detection of platforms
+  - [ ] collider with a specific layer closely under the player (GetPosition())
+- [ ] attaching
+  - [ ] position character controller at player position
+  - [ ] tell character script current player velocity
+  - [ ] position station at player position
+  - [ ] put player into station
+  - [ ] tell sync script platform id and local position and rotation
+- [ ] detection of detaching
+  - [ ] character controller is grounded but collider underneath them is not on the specific layer
+  - [ ] when airborne for some period of time, sphere cast in the direction of velocity, angled downwards, but that does not hit a collider on the specific layer
+- [ ] detaching
+  - [ ] make player exit station
+  - [ ] apply character velocity to player
+  - [ ] tell sync script that player is detached
+- [ ] while attached
+  - [ ] offsets required
+    - [ ] from platform to character
+    - [ ] from character to station
+    - [ ] from platform to station
+  - [ ] respect platform movement
+    - [ ] if the character is grounded
+      - [ ] teleport character to where it's supposed to be at, local to platform
+      - [ ] track angular velocity
+  - [ ] respect movement in play space
+    - [ ] get head position
+    - [ ] set y equal to character y
+    - [ ] if greater than some small threshold
+    - [ ] call Move on the character to that position
+    - [ ] any movement on x and z is not applied to the station
+    - [ ] any movement on y gets applied to the station's local position
+    - [ ] save offset from character to station
+    - [ ] neither movement affects character velocity
+  - [ ] respect user input
+    - [ ] jump
+      - [ ] if the character is grounded
+        - [ ] set y velocity to jump impulse
+    - [ ] look horizontal
+      - [ ] apply to station local rotation
+      - [ ] does not affect angular velocity
+    - [ ] move horizontal and vertical
+      - [ ] build velocity vector with x and z set based on head rotation
+      - [ ] if the character is grounded
+        - [ ] raycast down checking for downwards slopes or steps
+          - [ ] if yes, set velocity y to a large negative value
+          - [ ] if not set velocity y to a very small negative value, to ensure the character controller continues to report being grounded
+      - [ ] if the character is not grounded
+        - [ ] modify tracked velocity x and z, lerp smoothing towards built velocity vector. Giving some air control
+        - [ ] modify tracked velocity y, applying gravity
+      - [ ] save current character position
+      - [ ] call Move on the character
+      - [ ] compare saved position with final position
+      - [ ] save as tracked velocity
+      - [ ] if grounded, update tracked angular velocity
