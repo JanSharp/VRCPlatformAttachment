@@ -10,13 +10,15 @@
 - [x] ~~testing with 2 people in desktop works just fine, in live session with 40+ people it broke~~ idk what this was even referencing
 - [x] the station approach requires implementing gravity, velocity and jumping manually
 - [ ] character controller jump and gravity doesn't seem to match VRChat
+- [ ] jump velocity seems weird, it's like faster than the platform initially, but then you fall backwards and land further back. It's very weird
 - [ ] TeleportPlayerIntoStation does not actually function properly for immobile stations, which is what the system is using now
 - [ ] half body support, somehow
 - [ ] desktop support
   - [ ] might just need to work around the 180 degree rotation limit, other than that could probably behave very very similarly to full body
 - [ ] being in a station causes jitter of the world around you, including the platform you are attached to, even though the station is perfectly aligned with the platform
 - [ ] jumping and hitting a wall which is part of the moving platform cancels out the entire velocity, even though the wall that was hit itself has velocity and therefore the velocity that the player gets reduced to should match that of the hit wall. Which seems like a very hard thing to do
-- [ ] fix remote attachment, remote players should always be standing straight up in world space, not tilting with the platform
+- [x] fix remote attachment, remote players should always be standing straight up in world space, not tilting with the platform
+- [ ] remove RemoteSmoothingUI, and remove reference to JanSharp.GenericValueEditor from non Dev assembly definition
 
 - [x] detection of platforms
   - [x] collider with a specific layer closely under the player (GetPosition())
