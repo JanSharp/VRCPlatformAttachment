@@ -19,6 +19,7 @@
 - [ ] jumping and hitting a wall which is part of the moving platform cancels out the entire velocity, even though the wall that was hit itself has velocity and therefore the velocity that the player gets reduced to should match that of the hit wall. Which seems like a very hard thing to do
 - [x] fix remote attachment, remote players should always be standing straight up in world space, not tilting with the platform
 - [ ] remove RemoteSmoothingUI, and remove reference to JanSharp.GenericValueEditor from non Dev assembly definition
+- [ ] sometimes when a remote player gets attached they do a 360
 
 - [x] detection of platforms
   - [x] collider with a specific layer closely under the player (GetPosition())
