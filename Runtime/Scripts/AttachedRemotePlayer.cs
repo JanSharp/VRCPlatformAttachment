@@ -25,14 +25,10 @@ namespace JanSharp
         private float InterpolationDuration => remoteSmoothing.InterpolationDuration;
         private float DesiredVelocityMultiplier => remoteSmoothing.DesiredVelocityMultiplier;
         private float SyncLoopInterval => remoteSmoothing.SyncLoopInterval;
-        private float VelocityDiffCutoff => remoteSmoothing.VelocityDiffCutoff;
-        private float AngularVelocityDiffCutoff => remoteSmoothing.AngularVelocityDiffCutoff;
 #else
         private const float InterpolationDuration = 0.15f;
         private const float DesiredVelocityMultiplier = 0.4f;
         private const float SyncLoopInterval = 0.3f;
-        private const float VelocityDiffCutoff = 0.0f;
-        private const float AngularVelocityDiffCutoff = 0.0f;
 #endif
 
         private VRCPlayerApi player;
@@ -217,9 +213,8 @@ namespace JanSharp
         {
             Vector3 remainder = syncedLocalPosition - currentLocalPosition;
             Vector3 desiredLocalVelocity = (remainder / InterpolationDuration) * DesiredVelocityMultiplier;
-            float velocityDiff = VelocityDiffCutoff / Vector3.Distance(velocityRelativeToPlatform, desiredLocalVelocity);
             float deltaTime = Time.deltaTime;
-            velocityRelativeToPlatform = Vector3.Lerp(velocityRelativeToPlatform, desiredLocalVelocity, Mathf.Clamp01(Mathf.Max(velocityDiff, deltaTime / InterpolationDuration)));
+            velocityRelativeToPlatform = Vector3.Lerp(velocityRelativeToPlatform, desiredLocalVelocity, deltaTime / InterpolationDuration);
             currentLocalPosition += velocityRelativeToPlatform * deltaTime;
         }
 
@@ -230,9 +225,8 @@ namespace JanSharp
             if (axis.y < 0)
                 angle = -angle;
             float desiredLocalVelocity = (angle / InterpolationDuration) * DesiredVelocityMultiplier;
-            float velocityDiff = AngularVelocityDiffCutoff / Mathf.Abs(Mathf.Abs(angularVelocityRelativeToPlatform) - Mathf.Abs(desiredLocalVelocity));
             float deltaTime = Time.deltaTime;
-            angularVelocityRelativeToPlatform = Mathf.Lerp(angularVelocityRelativeToPlatform, desiredLocalVelocity, Mathf.Clamp01(Mathf.Max(velocityDiff, deltaTime / InterpolationDuration)));
+            angularVelocityRelativeToPlatform = Mathf.Lerp(angularVelocityRelativeToPlatform, desiredLocalVelocity, deltaTime / InterpolationDuration);
             currentLocalRotation *= Quaternion.AngleAxis(angularVelocityRelativeToPlatform * deltaTime, Vector3.up);
 
             // if (interpolationProgress == 1f)

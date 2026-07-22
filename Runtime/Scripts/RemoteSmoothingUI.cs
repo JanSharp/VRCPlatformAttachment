@@ -13,8 +13,6 @@ namespace JanSharp
         public float InterpolationDuration = 0.15f;
         public float DesiredVelocityMultiplier = 0.4f;
         public float SyncLoopInterval = 0.3f;
-        public float VelocityDiffCutoff = 0.0f;
-        public float AngularVelocityDiffCutoff = 0.0f;
 
         private void Start()
         {
@@ -23,8 +21,6 @@ namespace JanSharp
                 nameof(InterpolationDuration),
                 nameof(DesiredVelocityMultiplier),
                 nameof(SyncLoopInterval),
-                nameof(VelocityDiffCutoff),
-                nameof(AngularVelocityDiffCutoff),
             };
             WidgetData[] widgets = new WidgetData[fieldNames.Length];
             for (int i = 0; i < fieldNames.Length; i++)
