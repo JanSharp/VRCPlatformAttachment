@@ -28,7 +28,7 @@
   - [x] tell sync script platform id and local position and rotation
 - [x] detection of detaching
   - [x] character controller is grounded but collider underneath them is not on the specific layer
-  - [ ] when airborne for some period of time, sphere cast in the direction of velocity, angled downwards, but that does not hit a collider on the specific layer
+  - [x] when airborne for some period of time, sphere cast in the direction of velocity, angled downwards, but that does not hit a collider on the specific layer
 - [x] detaching
   - [x] make player exit station
   - [x] apply character velocity to player

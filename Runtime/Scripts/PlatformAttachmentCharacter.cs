@@ -33,6 +33,10 @@ namespace JanSharp
         // // the current frame's velocity is 65%, the prev velocity is 35%. And it repeats like that
         // private const float AdditionalVelocityNewWeight = 0.35f;
         private bool isGrounded;
+        private float airtime;
+        private const float MinimumAirtimeBeforeDetaching = 1.25f;
+        private const float MaxAngleForAirbornePlatformChecks = 30f * Mathf.Deg2Rad;
+        private const float MaxDistanceForAirbornePlatformChecks = 32f;
 
         private Quaternion prevPlatformRotation;
 
@@ -67,6 +71,7 @@ namespace JanSharp
             velocity = localPlayer.GetVelocity();
             angularVelocityAngles = 0f;
             isGrounded = false;
+            airtime = 0f;
             localStationPlayerPosition.SetPositionAndRotation(playerPosition, playerRotation);
             manager.UseLocalStation();
 
@@ -113,15 +118,30 @@ namespace JanSharp
 
         private bool ShouldDetach()
         {
-            if (!isGrounded)
-                return false;
             float radius = LocalPlayerCapsule.GetRadius();
+            Vector3 direction;
+            float maxDistance;
+            if (isGrounded)
+            {
+                airtime = 0f;
+                direction = Vector3.down;
+                maxDistance = radius + 0.5f;
+            }
+            else
+            {
+                airtime += Time.deltaTime;
+                if (airtime <= MinimumAirtimeBeforeDetaching)
+                    return false;
+                direction = Vector3.RotateTowards(Vector3.down, velocity, MaxAngleForAirbornePlatformChecks, maxMagnitudeDelta: 0f);
+                maxDistance = MaxDistanceForAirbornePlatformChecks;
+            }
+
             if (!Physics.SphereCast(
-                characterTransform.position + Vector3.up * (radius + 0.1f),
-                radius,
-                Vector3.down,
+                characterTransform.position + Vector3.up * radius,
+                radius * 0.8f,
+                direction,
                 out RaycastHit hit,
-                maxDistance: radius + 1f,
+                maxDistance,
                 manager.layersToAttachTo,
                 QueryTriggerInteraction.Ignore))
             {
