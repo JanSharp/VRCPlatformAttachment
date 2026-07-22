@@ -45,6 +45,11 @@ namespace JanSharp
 
         #region Local
 
+        public override void OnStationExited(VRCPlayerApi player)
+        {
+            // TODO: Do something.
+        }
+
         public void BeginSyncLoop(AttachablePlatform attachedPlatform)
         {
 #if PLATFORM_ATTACHMENT_DEBUG
@@ -52,7 +57,7 @@ namespace JanSharp
 #endif
             syncedAttachedPlatformId = attachedPlatform.id;
             this.attachedPlatform = attachedPlatform.transform;
-            manager.UseLocalStation();
+            // manager.UseLocalStation();
             RequestSerialization();
             shouldSyncLoopBeRunning = true;
             if (isSyncLoopRunning)
@@ -66,7 +71,7 @@ namespace JanSharp
 #if PLATFORM_ATTACHMENT_DEBUG
             Debug.Log($"[PlatformAttachmentDebug] {name}  {nameof(StopSyncLoop)} - syncedAttachedPlatformId: {syncedAttachedPlatformId}, shouldSyncLoopBeRunning: {shouldSyncLoopBeRunning}, isSyncLoopRunning: {isSyncLoopRunning}");
 #endif
-            manager.TeleportPlayerOutOfStation();
+            // manager.TeleportPlayerOutOfStation();
             syncedAttachedPlatformId = 0u;
             attachedPlatform = null;
             shouldSyncLoopBeRunning = false;
@@ -99,8 +104,8 @@ namespace JanSharp
                 StopSyncLoop();
                 return;
             }
-            syncedLocalPosition = manager.attachedLocalPosition;
-            syncedLocalRotation = manager.attachedLocalRotation;
+            syncedLocalPosition = attachedPlatform.InverseTransformPoint(stationPlayerPosition.position);
+            syncedLocalRotation = Quaternion.Inverse(PlatformAttachmentManager.ProjectOntoYPlane(attachedPlatform.rotation)) * stationPlayerPosition.rotation;
             // #if PLATFORM_ATTACHMENT_DEBUG
             //             qd.ShowForOneFrame(this, "OnPreSerialization", $"syncedLocalPosition: {syncedLocalPosition}");
             // #endif

@@ -1,0 +1,275 @@
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
+using VRC.Udon.Common;
+
+namespace JanSharp
+{
+    [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
+    [SingletonScript("bbe525fe8f53b070a9a6a76da1cf85ad")] // Runtime/Prefabs/PlatformAttachmentManager.prefab
+    public class PlatformAttachmentCharacter : UdonSharpBehaviour
+    {
+        [HideInInspector][SerializeField][SingletonReference] private QuickDebugUI qd;
+        [HideInInspector][SerializeField][SingletonReference] private PlatformAttachmentManager manager;
+        public CharacterController characterController;
+        public Transform characterTransform;
+        public LayerMask playerCollisionMask;
+
+        private Transform platform;
+        private AttachablePlatform platformScript;
+
+        private VRCPlayerApi localPlayer;
+        private AttachedRemotePlayer localAttachedPlayerSync;
+        private VRC.SDK3.Components.VRCStation localStation;
+        private Transform localStationPlayerPosition;
+
+        private const float GravityConstant = -9.81f;
+
+        private Vector3 velocity;
+        /// <summary>
+        /// <para>Always around axis <see cref="Vector3.up"/>.</para>
+        /// </summary>
+        private float angularVelocityAngles;
+        // // the current frame's velocity is 65%, the prev velocity is 35%. And it repeats like that
+        // private const float AdditionalVelocityNewWeight = 0.35f;
+        private bool isGrounded;
+
+        private Quaternion prevPlatformRotation;
+
+        private Vector3 characterPositionLocalToPlatform;
+        private Quaternion characterRotationLocalToPlatform;
+
+        private Vector3 stationPositionLocalToCharacter;
+        private Quaternion stationRotationLocalToCharacter;
+
+        private Vector3 characterPositionBeforeMovementThisFrame;
+
+        private void Start()
+        {
+            localPlayer = Networking.LocalPlayer;
+        }
+
+        public void SetLocalAttachedPlayerSync(AttachedRemotePlayer localAttachedPlayerSync)
+        {
+            this.localAttachedPlayerSync = localAttachedPlayerSync;
+            localStation = localAttachedPlayerSync.station;
+            localStationPlayerPosition = localAttachedPlayerSync.stationPlayerPosition;
+        }
+
+        public void Attach(AttachablePlatform platformScript)
+        {
+            Vector3 playerPosition = localPlayer.GetPosition();
+            Quaternion playerRotation = localPlayer.GetRotation();
+            platform = platformScript.transform;
+            this.platformScript = platformScript;
+            characterTransform.position = playerPosition;
+            prevPlatformRotation = PlatformAttachmentManager.ProjectOntoYPlane(platform.rotation);
+            velocity = localPlayer.GetVelocity();
+            angularVelocityAngles = 0f;
+            isGrounded = false;
+            localStationPlayerPosition.SetPositionAndRotation(playerPosition, playerRotation);
+            manager.UseLocalStation();
+
+            characterPositionLocalToPlatform = platform.InverseTransformPoint(playerPosition);
+            characterRotationLocalToPlatform = Quaternion.Inverse(PlatformAttachmentManager.ProjectOntoYPlane(platform.rotation)) * playerRotation;
+            stationPositionLocalToCharacter = Quaternion.Inverse(playerRotation) * (localStationPlayerPosition.position - playerPosition);
+            stationRotationLocalToCharacter = Quaternion.Inverse(playerRotation) * localStationPlayerPosition.rotation;
+
+            inputJump = false;
+        }
+
+        private void Detach()
+        {
+            manager.TeleportPlayerOutOfStation();
+            localPlayer.SetVelocity(velocity);
+            manager.Detach();
+        }
+
+        public void UpdateController()
+        {
+            if (ShouldDetach())
+            {
+                Detach();
+                return;
+            }
+            characterPositionBeforeMovementThisFrame = characterTransform.position;
+            RespectPlatformMovement();
+            RespectMovementInPlaySpace();
+            RespectUserInput();
+            ApplyMovementToStation();
+        }
+
+        private bool ShouldDetach()
+        {
+            if (!isGrounded)
+                return false;
+            float radius = LocalPlayerCapsule.GetRadius();
+            if (!Physics.SphereCast(
+                characterTransform.position + Vector3.up * (radius + 0.1f),
+                radius,
+                Vector3.down,
+                out RaycastHit hit,
+                maxDistance: radius + 1f,
+                manager.layersToAttachTo,
+                QueryTriggerInteraction.Ignore))
+            {
+                return true;
+            }
+            Transform platform = hit.transform;
+            if (platform == null) // null for VRChat internals.
+                return true;
+            AttachablePlatform platformScript = platform.GetComponent<AttachablePlatform>();
+            if (platformScript == null)
+                return true;
+            if (platformScript != this.platformScript)
+            {
+                // TODO: Switch platforms.
+            }
+            return false;
+        }
+
+        private void RespectPlatformMovement()
+        {
+            if (!isGrounded)
+                return;
+            characterController.enabled = false;
+            // TODO: Maybe experiment doing a Move call here instead.
+            characterTransform.position = platform.TransformPoint(characterPositionLocalToPlatform);
+            characterController.enabled = true;
+            qd.ShowForOneFrame(this, "platform velocity", ((characterTransform.position - characterPositionBeforeMovementThisFrame) / Time.deltaTime).ToString());
+
+            Quaternion platformRotation = PlatformAttachmentManager.ProjectOntoYPlane(platform.rotation);
+            Quaternion diff = Quaternion.Inverse(prevPlatformRotation) * platformRotation;
+            prevPlatformRotation = platformRotation;
+
+            diff.ToAngleAxis(out float angle, out Vector3 axis);
+            if (axis.y < 0)
+                angle = -angle;
+            angularVelocityAngles = angle / Time.deltaTime;
+        }
+
+        private void RespectMovementInPlaySpace()
+        {
+            var head = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
+            Vector3 characterPosition = characterTransform.position;
+            Vector3 headPosition = head.position;
+            headPosition.y = characterPosition.y;
+            Vector3 fromCharacterToHead = headPosition - characterPosition;
+            if (fromCharacterToHead.magnitude < 0.01f)
+                return;
+
+            characterController.Move(fromCharacterToHead);
+            Vector3 movement = characterTransform.position - characterPosition;
+            Vector3 localMovement = Quaternion.Inverse(PlatformAttachmentManager.ProjectOntoYPlane(platform.rotation) * characterRotationLocalToPlatform) * movement;
+
+            characterPositionBeforeMovementThisFrame += movement;
+
+            stationPositionLocalToCharacter.x -= localMovement.x;
+            // stationPositionLocalToPlatform.y += movement.y;
+            stationPositionLocalToCharacter.z -= localMovement.z;
+        }
+
+        private void RespectUserInput()
+        {
+            ProcessLookInput();
+            ProcessMoveInput();
+            inputJump = false;
+        }
+
+        private void ProcessLookInput()
+        {
+            characterRotationLocalToPlatform *= Quaternion.AngleAxis(inputLookHorizontal * 180f * Time.deltaTime, Vector3.up);
+            // TODO: Impl properly.
+        }
+
+        private void ProcessMoveInput()
+        {
+            var head = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
+            Quaternion headRotation = PlatformAttachmentManager.ProjectOntoYPlane(head.rotation);
+            Vector3 inputVelocity = headRotation * new Vector3(
+                inputMoveHorizontal * localPlayer.GetStrafeSpeed(),
+                0f,
+                inputMoveVertical * localPlayer.GetRunSpeed());
+
+            Vector3 newVelocity;
+            if (!isGrounded)
+            {
+                newVelocity = new Vector3(
+                    Mathf.Lerp(velocity.x, inputVelocity.x, Time.deltaTime), // TODO: Look at lerp smoothing from Freya.
+                    velocity.y + GravityConstant * localPlayer.GetGravityStrength() * Time.deltaTime,
+                    Mathf.Lerp(velocity.z, inputVelocity.z, Time.deltaTime));
+            }
+            else
+            {
+                if (inputJump)
+                {
+                    newVelocity = velocity;
+                    newVelocity.y = localPlayer.GetJumpImpulse();
+                }
+                else if (Physics.Raycast(
+                    characterTransform.position + Vector3.up * 0.1f,
+                    Vector3.down,
+                    // out RaycastHit hit,
+                    0.1f + characterController.stepOffset + characterController.skinWidth + 0.05f,
+                    playerCollisionMask,
+                    QueryTriggerInteraction.Ignore))
+                {
+                    newVelocity = inputVelocity;
+                    newVelocity.y = -10f;
+                }
+                else
+                {
+                    newVelocity = inputVelocity;
+                    newVelocity.y = -0.1f;
+                }
+            }
+
+            characterController.Move(newVelocity * Time.deltaTime);
+            Vector3 actualVelocity = (characterTransform.position - characterPositionBeforeMovementThisFrame) / Time.deltaTime;
+            velocity = actualVelocity.magnitude > newVelocity.magnitude
+                ? actualVelocity.normalized * newVelocity.magnitude
+                : actualVelocity;
+            isGrounded = characterController.isGrounded;
+
+            characterPositionLocalToPlatform = platform.InverseTransformPoint(characterTransform.position);
+
+            qd.ShowForOneFrame(this, "isGrounded", isGrounded.ToString());
+
+            // TODO: Apply angular velocity.
+        }
+
+        private void ApplyMovementToStation()
+        {
+            Quaternion characterRotation = PlatformAttachmentManager.ProjectOntoYPlane(platform.rotation) * characterRotationLocalToPlatform;
+            localStationPlayerPosition.SetPositionAndRotation(
+                characterTransform.position + characterRotation * stationPositionLocalToCharacter,
+                characterRotation * stationRotationLocalToCharacter);
+        }
+
+        private bool inputJump;
+        private float inputLookHorizontal;
+        private float inputMoveHorizontal;
+        private float inputMoveVertical;
+
+        public override void InputJump(bool value, UdonInputEventArgs args)
+        {
+            if (value)
+                inputJump = true;
+        }
+
+        public override void InputLookHorizontal(float value, UdonInputEventArgs args)
+        {
+            inputLookHorizontal = value;
+        }
+
+        public override void InputMoveHorizontal(float value, UdonInputEventArgs args)
+        {
+            inputMoveHorizontal = value;
+        }
+
+        public override void InputMoveVertical(float value, UdonInputEventArgs args)
+        {
+            inputMoveVertical = value;
+        }
+    }
+}

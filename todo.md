@@ -1,66 +1,82 @@
 
 - [ ] things to test
   - [x] set up synced animations in order to actually be able to test stuff
-  - [ ] people with ping would lag behind more and more as time passes
+  - [x] ~~people with ping would lag behind more and more as time passes~~ this would only apply when not using stations
   - [ ] having low frame rate break the system too
     - [x] make a script that intentionally lowers frame rate using busy waits and stopwatches
 - [x] ~~find a way to prevent ik drift (legs sliding diagonally behind remote players) for everybody who isn't in full body~~
   - ~~only option I've seen so far is using the immobilize flag. That would mean manually implementing all movement while being attached to a platform~~
   - By using stations this luckily becomes a non issue. Legs are no longer drifting behind, and moving around plays the walking animation. Like this is genuine luck
-- [ ] testing with 2 people in desktop works just fine, in live session with 40+ people it broke
-- [ ] the station approach requires implementing gravity, velocity and jumping manually
+- [x] ~~testing with 2 people in desktop works just fine, in live session with 40+ people it broke~~ idk what this was even referencing
+- [x] the station approach requires implementing gravity, velocity and jumping manually
+- [ ] character controller jump and gravity doesn't seem to match VRChat
+- [ ] TeleportPlayerIntoStation does not actually function properly for immobile stations, which is what the system is using now
+- [ ] half body support, somehow
+- [ ] desktop support
+  - [ ] might just need to work around the 180 degree rotation limit, other than that could probably behave very very similarly to full body
+- [ ] being in a station causes jitter of the world around you, including the platform you are attached to, even though the station is perfectly aligned with the platform
+- [ ] jumping and hitting a wall which is part of the moving platform cancels out the entire velocity, even though the wall that was hit itself has velocity and therefore the velocity that the player gets reduced to should match that of the hit wall. Which seems like a very hard thing to do
 
-- [ ] detection of platforms
-  - [ ] collider with a specific layer closely under the player (GetPosition())
-- [ ] attaching
-  - [ ] position character controller at player position
-  - [ ] tell character script current player velocity
-  - [ ] position station at player position
-  - [ ] put player into station
-  - [ ] tell sync script platform id and local position and rotation
-- [ ] detection of detaching
-  - [ ] character controller is grounded but collider underneath them is not on the specific layer
+- [x] detection of platforms
+  - [x] collider with a specific layer closely under the player (GetPosition())
+- [x] attaching
+  - [x] position character controller at player position
+  - [x] tell character script current player velocity
+  - [x] position station at player position
+  - [x] put player into station
+  - [x] tell sync script platform id and local position and rotation
+- [x] detection of detaching
+  - [x] character controller is grounded but collider underneath them is not on the specific layer
   - [ ] when airborne for some period of time, sphere cast in the direction of velocity, angled downwards, but that does not hit a collider on the specific layer
-- [ ] detaching
-  - [ ] make player exit station
-  - [ ] apply character velocity to player
-  - [ ] tell sync script that player is detached
-- [ ] while attached
-  - [ ] offsets required
-    - [ ] from platform to character
-    - [ ] from character to station
-    - [ ] from platform to station
-  - [ ] respect platform movement
-    - [ ] if the character is grounded
-      - [ ] teleport character to where it's supposed to be at, local to platform
-      - [ ] track angular velocity
-  - [ ] respect movement in play space
-    - [ ] get head position
-    - [ ] set y equal to character y
-    - [ ] if greater than some small threshold
-    - [ ] call Move on the character to that position
-    - [ ] any movement on x and z is not applied to the station
-    - [ ] any movement on y gets applied to the station's local position
-    - [ ] save offset from character to station
-    - [ ] neither movement affects character velocity
-  - [ ] respect user input
-    - [ ] jump
-      - [ ] if the character is grounded
-        - [ ] set y velocity to jump impulse
+- [x] detaching
+  - [x] make player exit station
+  - [x] apply character velocity to player
+  - [x] tell sync script that player is detached
+- [x] while attached
+  - [x] offsets required
+    - [x] from platform to character
+    - [x] from character to station
+    - [x] ~~from platform to station~~
+  - [x] save initial character position
+  - [x] respect platform movement
+    - [x] if the character is grounded
+      - [x] teleport character to where it's supposed to be at, local to platform
+      - [x] track angular velocity
+  - [x] respect movement in play space
+    - [x] get head position
+    - [x] set y equal to character y
+    - [x] if greater than some small threshold
+    - [x] call Move on the character to that position
+    - [x] any movement on x and z is not applied to the station
+    - [x] any movement on y gets applied to the station's local position
+    - [x] save offset from character to station
+    - [x] neither movement affects character velocity
+    - [x] cancel out this movement from the initially saved position
+  - [x] respect user input
+    - [x] jump
+      - [x] if the character is grounded
+        - [x] set y velocity to jump impulse
     - [ ] look horizontal
-      - [ ] apply to station local rotation
+      - [ ] apply to character local rotation
       - [ ] does not affect angular velocity
-    - [ ] move horizontal and vertical
-      - [ ] build velocity vector with x and z set based on head rotation
-      - [ ] if the character is grounded
-        - [ ] raycast down checking for downwards slopes or steps
-          - [ ] if yes, set velocity y to a large negative value
-          - [ ] if not set velocity y to a very small negative value, to ensure the character controller continues to report being grounded
-      - [ ] if the character is not grounded
-        - [ ] modify tracked velocity x and z, lerp smoothing towards built velocity vector. Giving some air control
-        - [ ] modify tracked velocity y, applying gravity
-      - [ ] save current character position
-      - [ ] call Move on the character
-      - [ ] compare saved position with final position
-      - [ ] save as tracked velocity
-      - [ ] if grounded, update tracked angular velocity
+    - [x] move horizontal and vertical
+      - [x] build velocity vector with x and z set based on head rotation
+      - [x] if the character is grounded
+        - [x] raycast down checking for downwards slopes or steps
+          - [x] if yes, set velocity y to a large negative value
+          - [x] if not set velocity y to a very small negative value, to ensure the character controller continues to report being grounded
+      - [x] if the character is not grounded
+        - [x] modify tracked velocity x and z, lerp smoothing towards built velocity vector. Giving some air control
+        - [x] modify tracked velocity y, applying gravity
+      - [x] ~~save current character position~~ must save initial position earlier
+      - [x] call Move on the character
+      - [x] compare saved position with final position
+      - [x] save as tracked velocity
+      - [x] ~~if grounded, update tracked angular velocity~~ happens when respecting platform movement
+      - [ ] if not grounded, apply angular velocity
+        - [ ] somehow
+  - [x] move station based on character
+  - [x] update sync script
+    - [ ] best only if values changed
+- [ ] detect change of attached platform
+- [ ] cleanly switch from one platform to another

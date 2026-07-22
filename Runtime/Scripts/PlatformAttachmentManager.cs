@@ -1,7 +1,6 @@
 ﻿using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
-using VRC.Udon.Common;
 
 namespace JanSharp
 {
@@ -9,7 +8,8 @@ namespace JanSharp
     [SingletonScript("bbe525fe8f53b070a9a6a76da1cf85ad")] // Runtime/Prefabs/PlatformAttachmentManager.prefab
     public partial class PlatformAttachmentManager : UdonSharpBehaviour
     {
-        [HideInInspector][SerializeField][SingletonReference] QuickDebugUI qd;
+        [HideInInspector][SerializeField][SingletonReference] private QuickDebugUI qd;
+        [HideInInspector][SerializeField][SingletonReference] private PlatformAttachmentCharacter character;
         public LayerMask layersToAttachTo;
         [Header("Internal")]
         public Transform originDebug;
@@ -24,7 +24,7 @@ namespace JanSharp
         // private Vector3 originPositionLocalToStation;
         // private Quaternion originRotationLocalToStation;
         /// <summary>
-        /// <para>Set at the beginning of <see cref="OnTrulyPostLateUpdate"/>.</para>
+        /// <para>Set at the beginning of <see cref="LateUpdate"/>.</para>
         /// </summary>
         private Vector3 localPlayerPosition;
         private Quaternion localPlayerRotation;
@@ -36,13 +36,8 @@ namespace JanSharp
         [HideInInspector][SerializeField] private uint highestPlatformId;
 
         private bool isAttached;
-        [System.NonSerialized] public Vector3 attachedLocalPosition;
-        [System.NonSerialized] public Quaternion attachedLocalRotation;
         private Transform attachedPlatform;
         private AttachablePlatform attachedAttachablePlatform;
-        private Vector3 additionalVelocity;
-        // the current frame's velocity is 70%, the prev velocity is 30%. And it repeats like that
-        private const float AdditionalVelocityNewWeight = 0.35f;
 
         private const int MaxTPIterations = 10;
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
@@ -84,6 +79,7 @@ namespace JanSharp
             this.localAttachedPlayerSync = localAttachedPlayerSync;
             localStation = localAttachedPlayerSync.station;
             localStationPlayerPosition = localAttachedPlayerSync.stationPlayerPosition;
+            character.SetLocalAttachedPlayerSync(localAttachedPlayerSync);
             if (isAttached)
                 localAttachedPlayerSync.BeginSyncLoop(attachedAttachablePlatform);
         }
@@ -100,7 +96,6 @@ namespace JanSharp
             return index < 0 ? 0u : allPlatformIds[index];
         }
 
-        // [OnTrulyPostLateUpdate]
         private void LateUpdate()
         {
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
@@ -123,34 +118,28 @@ namespace JanSharp
                 // But in both of these cases, once in a station they have an unchanging offset to the station.
             }
 #endif
+            if (isAttached)
+            {
+                character.UpdateController();
+                return;
+            }
 
             localPlayerPosition = localPlayer.GetPosition();
             float radius = LocalPlayerCapsule.GetRadius();
-            Transform platform = null;
             if (Physics.SphereCast(
                 localPlayerPosition + Vector3.up * (radius + 0.15f),
                 isAttached ? radius + 0.1f : radius + 0.05f,
                 Vector3.down,
                 out RaycastHit hit,
                 maxDistance: isAttached ? radius + 1f : radius + 0.40f,
-                layersToAttachTo)) // QueryTriggerInteraction.UseGlobal
+                layersToAttachTo,
+                QueryTriggerInteraction.Ignore))
             {
-                platform = hit.transform;
+                Transform platform = hit.transform;
+                if (platform != null) // null for VRChat internals.
+                    TryAttach(platform);
             }
 
-            if (isAttached && platform == attachedPlatform)
-            {
-                ApplyPlatformMovement();
-#if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-                totalSw.Stop();
-                ShowPerformance();
-#endif
-                return;
-            }
-            if (attachedPlatform != null)
-                Detach();
-            if (platform != null)
-                Attach(platform);
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
             totalSw.Stop();
             ShowPerformance();
@@ -173,10 +162,10 @@ namespace JanSharp
         }
 #endif
 
-        private void Attach(Transform platform)
+        private void TryAttach(Transform platform)
         {
 #if PLATFORM_ATTACHMENT_DEBUG
-            Debug.Log($"[PlatformAttachmentDebug] Manager  {nameof(Attach)}");
+            Debug.Log($"[PlatformAttachmentDebug] Manager  {nameof(TryAttach)}");
 #endif
             AttachablePlatform attachablePlatform = platform.GetComponent<AttachablePlatform>();
             if (attachablePlatform == null)
@@ -186,14 +175,12 @@ namespace JanSharp
             isAttached = true;
             attachedPlatform = platform;
             attachedAttachablePlatform = attachablePlatform;
-            attachedLocalPosition = platform.InverseTransformPoint(localPlayerPosition);
-            attachedLocalRotation = Quaternion.Inverse(ProjectOntoYPlane(platform.rotation)) * localPlayer.GetRotation();
-            additionalVelocity = Vector3.zero;
+            character.Attach(attachablePlatform);
             if (localAttachedPlayerSync != null)
                 localAttachedPlayerSync.BeginSyncLoop(attachablePlatform);
         }
 
-        private void Detach()
+        public void Detach()
         {
 #if PLATFORM_ATTACHMENT_DEBUG
             Debug.Log($"[PlatformAttachmentDebug] Manager  {nameof(Detach)}");
@@ -201,39 +188,15 @@ namespace JanSharp
             isAttached = false;
             attachedPlatform = null;
             attachedAttachablePlatform = null;
-            // localPlayer.SetVelocity(localPlayer.GetVelocity() + additionalVelocity);
             if (localAttachedPlayerSync != null)
                 localAttachedPlayerSync.StopSyncLoop();
-        }
-
-        private void ApplyPlatformMovement()
-        {
-            ApplyUserInput();
-            MoveLocalStationToAttachedLocation();
-            //             Vector3 positionDiff = attachedPlatform.position + attachedPlatform.TransformPoint(attachedLocalPosition) - prevPlayerPos;
-            //             Quaternion platformRotation = attachedPlatform.rotation;
-            //             Quaternion rotationDiff = ProjectOntoYPlane(Quaternion.Inverse(prevPlatformRotation) * platformRotation);
-            //             localPlayerRotation = localPlayer.GetRotation();
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //             getTrackingDataSw.Start();
-            // #endif
-            //             localPlayerOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-            // #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
-            //             getTrackingDataSw.Stop();
-            // #endif
-            //             TeleportPlayer(localPlayerPosition + positionDiff, localPlayerRotation * rotationDiff, positionDiff, rotationDiff);
-
-            //             prevPlayerPos = localPlayer.GetPosition();
-            //             additionalVelocity = (positionDiff / Time.deltaTime) * AdditionalVelocityNewWeight + (additionalVelocity * (1f - AdditionalVelocityNewWeight));
-            //             attachedLocalPosition = attachedPlatform.InverseTransformDirection(prevPlayerPos - attachedPlatform.position);
-            //             prevPlatformRotation = platformRotation;
         }
 
         /// <summary>Handles quaternions where their forward vector is pointing straight up or down.</summary>
         /// <returns>A quaternion purely rotating around the Y axis. If the given <paramref name="rotation"/>
         /// was upside down, the result does not reflect as such. The "up" of the resulting rotation is always
         /// equal to <see cref="Vector3.up"/>.</returns>
-        private Quaternion ProjectOntoYPlane(Quaternion rotation)
+        public static Quaternion ProjectOntoYPlane(Quaternion rotation)
         {
             Vector3 projectedForward = Vector3.ProjectOnPlane(rotation * Vector3.forward, Vector3.up);
             return projectedForward == Vector3.zero // Facing straight up or down?
@@ -264,43 +227,6 @@ namespace JanSharp
             // originRotationLocalToStation = inverseRotation * origin.rotation;
         }
 
-        private void MoveLocalStationToAttachedLocation()
-        {
-            Vector3 position = attachedPlatform.TransformPoint(attachedLocalPosition);
-            Quaternion rotation = ProjectOntoYPlane(attachedPlatform.rotation) * attachedLocalRotation;
-
-            // Vector3 desiredOriginPosition = position + rotation * originPositionLocalToStation;
-            // Quaternion desiredOriginRotation = rotation * originRotationLocalToStation;
-
-            // var preOrigin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-            localStationPlayerPosition.SetPositionAndRotation(position, rotation);
-            // var origin = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Origin);
-            // qd.ShowForOneFrame(this, "moving station origin diff", (preOrigin.position - origin.position).ToString());
-            // // This ^ always shows 0 0 0. That's a problem. That means moving the station player position does
-            // // not instantly move the player, which makes trying to cancel out VRChat's stupid jitter very
-            // // difficult if not impossible.
-
-            // Vector3 positionOffset = origin.position - desiredOriginPosition;
-            // Quaternion rotationOffset = Quaternion.Inverse(origin.rotation) * desiredOriginRotation;
-
-            // localStationPlayerPosition.SetPositionAndRotation(
-            //     position + positionOffset,
-            //     rotation);
-
-            // Quaternion inverseRotation = Quaternion.Inverse(origin.rotation);
-            // Vector3 actualStationPositionLocalToOrigin = inverseRotation * (position - origin.position);
-            // Quaternion actualStationRotationLocalToOrigin = inverseRotation * rotation;
-            // Vector3 positionOffset = origin.rotation * (stationPositionLocalToOrigin - actualStationPositionLocalToOrigin);
-            // Quaternion rotationOffset = Quaternion.Inverse(actualStationRotationLocalToOrigin) * stationRotationLocalToOrigin;
-
-            // localStationPlayerPosition.SetPositionAndRotation(
-            //     position + positionOffset,
-            //     rotation);
-            // // localStationPlayerPosition.SetPositionAndRotation(
-            // //     attachedPlatform.TransformPoint(attachedLocalPosition) + positionOffset,
-            // //     ProjectOntoYPlane(attachedPlatform.rotation) * attachedLocalRotation * rotationOffset);
-        }
-
 #if PLATFORM_ATTACHMENT_DEBUG
         private VRCPlayerApi.TrackingData PrintOriginDiffs(
             VRCPlayerApi.TrackingData originalOrigin,
@@ -319,58 +245,6 @@ namespace JanSharp
             return origin;
         }
 #endif
-
-        // private VRCPlayerApi.TrackingData prevOrigin;
-        // private VRCPlayerApi.TrackingData prevHead;
-        // private Vector3 prevPosition;
-        // private Quaternion prevRotation;
-
-        private float inputMoveHorizontal;
-        private float inputMoveVertical;
-        private float inputLookHorizontal;
-
-        public override void InputMoveHorizontal(float value, UdonInputEventArgs args)
-        {
-            inputMoveHorizontal = value;
-        }
-
-        public override void InputMoveVertical(float value, UdonInputEventArgs args)
-        {
-            inputMoveVertical = value;
-        }
-
-        public override void InputLookHorizontal(float value, UdonInputEventArgs args)
-        {
-            inputLookHorizontal = value;
-        }
-
-        // public override void InputLookVertical(float value, UdonInputEventArgs args)
-        // {
-        // }
-
-        private void ApplyUserInput()
-        {
-            float deltaTime = Time.deltaTime;
-            var head = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
-
-            Vector3 velocity = ProjectOntoYPlane(head.rotation) * new Vector3(
-                inputMoveHorizontal * localPlayer.GetStrafeSpeed(),
-                0f,
-                inputMoveVertical * localPlayer.GetRunSpeed());
-
-            Vector3 position = attachedPlatform.TransformPoint(attachedLocalPosition);
-            Quaternion rotation = ProjectOntoYPlane(attachedPlatform.rotation) * attachedLocalRotation;
-
-            position += velocity * deltaTime;
-            rotation *= Quaternion.AngleAxis(deltaTime * inputLookHorizontal * 180f, Vector3.up);
-
-            attachedLocalPosition = attachedPlatform.InverseTransformPoint(position);
-            attachedLocalRotation = Quaternion.Inverse(ProjectOntoYPlane(attachedPlatform.rotation)) * rotation;
-
-            // Doing this is good when in half body, but in full body it locks the avatar oddly, it does not
-            // follow trackers anymore.
-            // localPlayer.SetVelocity(velocity);
-        }
 
         public void TeleportPlayerOutOfStation()
         {
@@ -420,7 +294,7 @@ namespace JanSharp
                 // Teleports also make the player exist the station.
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
                 exitStationSw.Start();
-                localStation.ExitStation(localPlayer);
+                // localStation.ExitStation(localPlayer);
                 exitStationSw.Stop();
 #endif
 #if PLATFORM_ATTACHMENT_DEBUG
