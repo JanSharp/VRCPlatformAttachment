@@ -66,6 +66,15 @@ namespace JanSharp
             SendCustomEventDelayedSeconds(nameof(SyncLoop), SyncLoopInterval);
         }
 
+        public void ChangeSyncedAttachedPlatform(AttachablePlatform attachedPlatform)
+        {
+#if PLATFORM_ATTACHMENT_DEBUG
+            Debug.Log($"[PlatformAttachmentDebug] {name}  {nameof(ChangeSyncedAttachedPlatform)} - attachedPlatform.id: {attachedPlatform.id}, shouldSyncLoopBeRunning: {shouldSyncLoopBeRunning}, isSyncLoopRunning: {isSyncLoopRunning}");
+#endif
+            syncedAttachedPlatformId = attachedPlatform.id;
+            this.attachedPlatform = attachedPlatform.transform;
+        }
+
         public void StopSyncLoop()
         {
 #if PLATFORM_ATTACHMENT_DEBUG

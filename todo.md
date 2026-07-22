@@ -16,6 +16,7 @@
   - [ ] might just need to work around the 180 degree rotation limit, other than that could probably behave very very similarly to full body
 - [ ] being in a station causes jitter of the world around you, including the platform you are attached to, even though the station is perfectly aligned with the platform
 - [ ] jumping and hitting a wall which is part of the moving platform cancels out the entire velocity, even though the wall that was hit itself has velocity and therefore the velocity that the player gets reduced to should match that of the hit wall. Which seems like a very hard thing to do
+- [ ] fix remote attachment, remote players should always be standing straight up in world space, not tilting with the platform
 
 - [x] detection of platforms
   - [x] collider with a specific layer closely under the player (GetPosition())
@@ -78,5 +79,5 @@
   - [x] move station based on character
   - [x] update sync script
     - [ ] best only if values changed
-- [ ] detect change of attached platform
-- [ ] cleanly switch from one platform to another
+- [x] detect change of attached platform
+- [x] cleanly switch from one platform to another

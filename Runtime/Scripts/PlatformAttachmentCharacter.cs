@@ -78,6 +78,18 @@ namespace JanSharp
             inputJump = false;
         }
 
+        private void SwitchAttachedPlatform(AttachablePlatform platformScript)
+        {
+            platform = platformScript.transform;
+            this.platformScript = platformScript;
+            prevPlatformRotation = PlatformAttachmentManager.ProjectOntoYPlane(platform.rotation);
+
+            characterPositionLocalToPlatform = platform.InverseTransformPoint(characterTransform.position);
+            characterRotationLocalToPlatform = Quaternion.Inverse(PlatformAttachmentManager.ProjectOntoYPlane(platform.rotation)) * characterTransform.rotation;
+
+            manager.SwitchAttachedPlatform(platformScript);
+        }
+
         private void Detach()
         {
             manager.TeleportPlayerOutOfStation();
@@ -122,9 +134,7 @@ namespace JanSharp
             if (platformScript == null)
                 return true;
             if (platformScript != this.platformScript)
-            {
-                // TODO: Switch platforms.
-            }
+                SwitchAttachedPlatform(platformScript);
             return false;
         }
 

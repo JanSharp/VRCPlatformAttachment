@@ -180,6 +180,19 @@ namespace JanSharp
                 localAttachedPlayerSync.BeginSyncLoop(attachablePlatform);
         }
 
+        public void SwitchAttachedPlatform(AttachablePlatform attachablePlatform)
+        {
+#if PLATFORM_ATTACHMENT_DEBUG
+            Debug.Log($"[PlatformAttachmentDebug] Manager  {nameof(SwitchAttachedPlatform)}");
+#endif
+            if (attachablePlatform.id == 0u)
+                attachablePlatform.id = GetIdFromPlatform(attachablePlatform);
+            attachedPlatform = attachablePlatform.transform;
+            attachedAttachablePlatform = attachablePlatform;
+            if (localAttachedPlayerSync != null)
+                localAttachedPlayerSync.ChangeSyncedAttachedPlatform(attachablePlatform);
+        }
+
         public void Detach()
         {
 #if PLATFORM_ATTACHMENT_DEBUG
