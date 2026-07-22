@@ -9,7 +9,9 @@ namespace JanSharp
     [SingletonScript("bbe525fe8f53b070a9a6a76da1cf85ad")] // Runtime/Prefabs/PlatformAttachmentManager.prefab
     public class PlatformAttachmentCharacter : UdonSharpBehaviour
     {
+#if PLATFORM_ATTACHMENT_DEBUG
         [HideInInspector][SerializeField][SingletonReference] private QuickDebugUI qd;
+#endif
         [HideInInspector][SerializeField][SingletonReference] private PlatformAttachmentManager manager;
         public CharacterController characterController;
         public Transform characterTransform;
@@ -166,7 +168,9 @@ namespace JanSharp
             // TODO: Maybe experiment doing a Move call here instead.
             characterTransform.position = platform.TransformPoint(characterPositionLocalToPlatform);
             characterController.enabled = true;
+#if PLATFORM_ATTACHMENT_DEBUG
             qd.ShowForOneFrame(this, "platform velocity", ((characterTransform.position - characterPositionBeforeMovementThisFrame) / Time.deltaTime).ToString());
+#endif
 
             Quaternion platformRotation = PlatformAttachmentManager.ProjectOntoYPlane(platform.rotation);
             Quaternion diff = Quaternion.Inverse(prevPlatformRotation) * platformRotation;
@@ -263,7 +267,9 @@ namespace JanSharp
 
             characterPositionLocalToPlatform = platform.InverseTransformPoint(characterTransform.position);
 
+#if PLATFORM_ATTACHMENT_DEBUG
             qd.ShowForOneFrame(this, "isGrounded", isGrounded.ToString());
+#endif
 
             // TODO: Apply angular velocity.
         }
