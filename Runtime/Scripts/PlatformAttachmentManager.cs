@@ -125,11 +125,12 @@ namespace JanSharp
                 return;
             }
 
+            // Smaller radius than the one used for detaching to reduce chances of detaching and instantly attaching again next update.
             localPlayerPosition = localPlayer.GetPosition();
             float radius = LocalPlayerCapsule.GetRadius();
             if (Physics.SphereCast(
-                localPlayerPosition + Vector3.up * (radius + 0.15f),
-                isAttached ? radius + 0.1f : radius + 0.05f,
+                localPlayerPosition + Vector3.up * (radius + 0.5f),
+                radius * 0.8f,
                 Vector3.down,
                 out RaycastHit hit,
                 maxDistance: isAttached ? radius + 1f : radius + 0.40f,
