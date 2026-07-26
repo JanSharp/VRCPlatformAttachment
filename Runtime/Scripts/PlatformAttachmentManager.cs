@@ -5,6 +5,7 @@ using VRC.SDKBase;
 namespace JanSharp
 {
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
+    [DefaultExecutionOrder(1000000)]
     [SingletonScript("bbe525fe8f53b070a9a6a76da1cf85ad")] // Runtime/Prefabs/PlatformAttachmentManager.prefab
     public partial class PlatformAttachmentManager : UdonSharpBehaviour
     {
@@ -96,7 +97,7 @@ namespace JanSharp
             return index < 0 ? 0u : allPlatformIds[index];
         }
 
-        private void LateUpdate()
+        private void FixedUpdate()
         {
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
             totalSw.Start();
