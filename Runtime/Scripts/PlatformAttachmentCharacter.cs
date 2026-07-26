@@ -127,7 +127,7 @@ namespace JanSharp
             {
                 airtime = 0f;
                 direction = Vector3.down;
-                maxDistance = radius + 0.5f;
+                maxDistance = radius + 1f;
             }
             else
             {
@@ -139,8 +139,8 @@ namespace JanSharp
             }
 
             if (!Physics.SphereCast(
-                characterTransform.position + Vector3.up * radius,
-                radius * 0.8f,
+                characterTransform.position + Vector3.up * (radius + 0.5f),
+                radius * 0.9f,
                 direction,
                 out RaycastHit hit,
                 maxDistance,
