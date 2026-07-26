@@ -165,9 +165,15 @@ namespace JanSharp
             if (!isGrounded)
                 return;
             characterController.enabled = false;
-            // TODO: Maybe experiment doing a Move call here instead.
             characterTransform.position = platform.TransformPoint(characterPositionLocalToPlatform);
             characterController.enabled = true;
+            Vector3 pre = characterTransform.position;
+            // This might help with getting continuously moved when some collider intersects with the player
+            // that previously wasn't - a collider moved into the player.
+            // TODO: think about what variables should get modified after this call. Think about this more in general.
+            characterController.Move(Vector3.down * 0.1f);
+            // if (characterTransform.position != pre)
+            //     Debug.Log($"<dlt> Moved {(characterTransform.position - pre).magnitude} | {characterTransform.position - pre}");
 #if PLATFORM_ATTACHMENT_DEBUG
             qd.ShowForOneFrame(this, "platform velocity", ((characterTransform.position - characterPositionBeforeMovementThisFrame) / Time.deltaTime).ToString());
 #endif
