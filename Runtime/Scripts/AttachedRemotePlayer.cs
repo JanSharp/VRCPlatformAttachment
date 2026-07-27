@@ -245,6 +245,11 @@ namespace JanSharp
             // }
         }
 
+        private void OnDestroy()
+        {
+            updateManager.Deregister(this);
+        }
+
         #endregion
     }
 }
