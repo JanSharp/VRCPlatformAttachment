@@ -85,3 +85,17 @@
     - [ ] best only if values changed
 - [x] detect change of attached platform
 - [x] cleanly switch from one platform to another
+
+Today on "Stations Are So Freaking Random" we present:
+- Stations do not have network ids
+- Stations can have the exact same name and hierarchy path (good!)
+- And yet players can still enter identically named stations and they appear in the correct one remotely, which means they use some different id system that isn't network ids nor hierarchy paths
+- Since they don't have network ids, sync mode None scripts can be on stations (nice)
+- A station without any collider on the same game object adds a default box collider to itself at runtime
+- Colliders on the same object as the station remain active and scripts do not get `DisableInteractive` set to true, however while a remote player is sitting in a station those colliders cannot be interacted with
+  - Colliders on children of the station also become equally non obviously non interactive, even if they have their own separate interact script on them
+- A local player can still interact with said colliders though, even though they cannot enter the station they are already in again either, just like how remote players cannot enter theirs. (aka there's no apparent reason for this discrepancy)
+- A station without any UdonBehaviours on it automatically makes itself interactable as though there was a script on it, behaving as though said script did `Networking.LocalPlayer.UseAttachedStation();` in `Interact`, using the default "Use" interact text (this ones high up there on the _huh?!_ list)
+  - Having any UdonBehavior on it prevents it from doing so, even one without an Interact, that does nothing
+  - Having an UdonBehaviour on it with an `Interact` makes it use that, it does not cause the local player to use the station on interact - unless the script says so
+- Having a box collider on a station already, however having the collider set to disabled, luckily does not cause the station to enable said collider at runtime
