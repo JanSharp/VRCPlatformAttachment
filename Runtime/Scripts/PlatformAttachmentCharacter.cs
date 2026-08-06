@@ -167,7 +167,7 @@ namespace JanSharp
             characterController.enabled = false;
             characterTransform.position = platform.TransformPoint(characterPositionLocalToPlatform);
             characterController.enabled = true;
-            Vector3 pre = characterTransform.position;
+            // Vector3 pre = characterTransform.position;
             // This might help with getting continuously moved when some collider intersects with the player
             // that previously wasn't - a collider moved into the player.
             // TODO: think about what variables should get modified after this call. Think about this more in general.
