@@ -131,7 +131,7 @@ namespace JanSharp
             }
             else
             {
-                airtime += Time.deltaTime;
+                airtime += Time.fixedDeltaTime;
                 if (airtime <= MinimumAirtimeBeforeDetaching)
                     return false;
                 direction = Vector3.RotateTowards(Vector3.down, velocity, MaxAngleForAirbornePlatformChecks, maxMagnitudeDelta: 0f);
@@ -175,7 +175,7 @@ namespace JanSharp
             // if (characterTransform.position != pre)
             //     Debug.Log($"<dlt> Moved {(characterTransform.position - pre).magnitude} | {characterTransform.position - pre}");
 #if PLATFORM_ATTACHMENT_DEBUG
-            qd.ShowForOneFrame(this, "platform velocity", ((characterTransform.position - characterPositionBeforeMovementThisFrame) / Time.deltaTime).ToString());
+            qd.ShowForOneFrame(this, "platform velocity", ((characterTransform.position - characterPositionBeforeMovementThisFrame) / Time.fixedDeltaTime).ToString());
 #endif
 
             Quaternion platformRotation = PlatformAttachmentManager.ProjectOntoYPlane(platform.rotation);
@@ -185,7 +185,7 @@ namespace JanSharp
             diff.ToAngleAxis(out float angle, out Vector3 axis);
             if (axis.y < 0)
                 angle = -angle;
-            angularVelocityAngles = angle / Time.deltaTime;
+            angularVelocityAngles = angle / Time.fixedDeltaTime;
         }
 
         private void RespectMovementInPlaySpace()
@@ -218,7 +218,7 @@ namespace JanSharp
 
         private void ProcessLookInput()
         {
-            characterRotationLocalToPlatform *= Quaternion.AngleAxis(inputLookHorizontal * 180f * Time.deltaTime, Vector3.up);
+            characterRotationLocalToPlatform *= Quaternion.AngleAxis(inputLookHorizontal * 180f * Time.fixedDeltaTime, Vector3.up);
             // TODO: Impl properly.
         }
 
@@ -235,9 +235,9 @@ namespace JanSharp
             if (!isGrounded)
             {
                 newVelocity = new Vector3(
-                    Mathf.Lerp(velocity.x, inputVelocity.x, Time.deltaTime), // TODO: Look at lerp smoothing from Freya.
-                    velocity.y + GravityConstant * localPlayer.GetGravityStrength() * Time.deltaTime,
-                    Mathf.Lerp(velocity.z, inputVelocity.z, Time.deltaTime));
+                    Mathf.Lerp(velocity.x, inputVelocity.x, Time.fixedDeltaTime), // TODO: Look at lerp smoothing from Freya.
+                    velocity.y + GravityConstant * localPlayer.GetGravityStrength() * Time.fixedDeltaTime,
+                    Mathf.Lerp(velocity.z, inputVelocity.z, Time.fixedDeltaTime));
             }
             else
             {
@@ -264,8 +264,8 @@ namespace JanSharp
                 }
             }
 
-            characterController.Move(newVelocity * Time.deltaTime);
-            Vector3 actualVelocity = (characterTransform.position - characterPositionBeforeMovementThisFrame) / Time.deltaTime;
+            characterController.Move(newVelocity * Time.fixedDeltaTime);
+            Vector3 actualVelocity = (characterTransform.position - characterPositionBeforeMovementThisFrame) / Time.fixedDeltaTime;
             velocity = actualVelocity.magnitude > newVelocity.magnitude
                 ? actualVelocity.normalized * newVelocity.magnitude
                 : actualVelocity;
