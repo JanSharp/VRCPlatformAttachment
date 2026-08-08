@@ -13,6 +13,11 @@ namespace JanSharp
         [HideInInspector][SerializeField][SingletonReference] private QuickDebugUI qd;
 #endif
         [HideInInspector][SerializeField][SingletonReference] private PlatformAttachmentManager manager;
+        [HideInInspector][SerializeField][SingletonReference] private UpdateManager updateManager;
+        /// <summary>
+        /// <para>Used by the <see cref="UpdateManager"/>.</para>
+        /// </summary>
+        [System.NonSerialized] public int customUpdateInternalIndex;
         public CharacterController characterController;
         public Transform characterTransform;
         public LayerMask playerCollisionMask;
@@ -83,6 +88,7 @@ namespace JanSharp
             stationRotationLocalToCharacter = Quaternion.Inverse(playerRotation) * localStationPlayerPosition.rotation;
 
             inputJump = false;
+            updateManager.Register(this);
         }
 
         private void SwitchAttachedPlatform(AttachablePlatform platformScript)
@@ -99,6 +105,7 @@ namespace JanSharp
 
         private void Detach()
         {
+            updateManager.Deregister(this);
             manager.TeleportPlayerOutOfStation();
             localPlayer.SetVelocity(velocity);
             manager.Detach();
@@ -218,7 +225,10 @@ namespace JanSharp
 
         private void ProcessLookInput()
         {
-            characterRotationLocalToPlatform *= Quaternion.AngleAxis(inputLookHorizontal * 180f * Time.fixedDeltaTime, Vector3.up);
+            // Using inputLookHorizontal directly here (and of course then not setting it to 0 in here as that
+            // would be invalid) here caused unexplainably fast spinning with lower frame rates.
+            characterRotationLocalToPlatform *= Quaternion.AngleAxis(accumulatedInputLookHorizontal * 90f * Time.fixedDeltaTime, Vector3.up);
+            accumulatedInputLookHorizontal = 0f;
             // TODO: Impl properly.
         }
 
@@ -290,6 +300,7 @@ namespace JanSharp
 
         private bool inputJump;
         private float inputLookHorizontal;
+        private float accumulatedInputLookHorizontal;
         private float inputMoveHorizontal;
         private float inputMoveVertical;
 
@@ -297,6 +308,11 @@ namespace JanSharp
         {
             if (value)
                 inputJump = true;
+        }
+
+        public void CustomUpdate()
+        {
+            accumulatedInputLookHorizontal += inputLookHorizontal;
         }
 
         public override void InputLookHorizontal(float value, UdonInputEventArgs args)
