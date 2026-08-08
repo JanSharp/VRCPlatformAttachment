@@ -25,6 +25,7 @@ namespace JanSharp
         private Transform platform;
         private AttachablePlatform platformScript;
 
+        private bool isInVR;
         private VRCPlayerApi localPlayer;
         private AttachedRemotePlayer localAttachedPlayerSync;
         private VRC.SDK3.Components.VRCStation localStation;
@@ -58,6 +59,7 @@ namespace JanSharp
         private void Start()
         {
             localPlayer = Networking.LocalPlayer;
+            isInVR = localPlayer.IsUserInVR();
         }
 
         public void SetLocalAttachedPlayerSync(AttachedRemotePlayer localAttachedPlayerSync)
@@ -216,20 +218,32 @@ namespace JanSharp
             stationPositionLocalToCharacter.z -= localMovement.z;
         }
 
-        private void RespectUserInput()
+        public void CustomUpdate()
         {
+            if (inputLookHorizontal == 0)
+                return;
             ProcessLookInput();
-            ProcessMoveInput();
-            inputJump = false;
+            ApplyMovementToStation();
         }
 
         private void ProcessLookInput()
         {
-            // Using inputLookHorizontal directly here (and of course then not setting it to 0 in here as that
-            // would be invalid) here caused unexplainably fast spinning with lower frame rates.
-            characterRotationLocalToPlatform *= Quaternion.AngleAxis(accumulatedInputLookHorizontal * 90f * Time.fixedDeltaTime, Vector3.up);
-            accumulatedInputLookHorizontal = 0f;
-            // TODO: Impl properly.
+            // TODO: Maybe make this rotate around the player's head instead, though the offset math for that is convoluted.
+
+            // if (isInVR)
+            // {
+            // It's about ~1.65 seconds in VRChat (just normally, not using this math here) to do a full 360.
+            // With 220 as the multiplier it's ~1.63636363 seconds
+            characterRotationLocalToPlatform *= Quaternion.AngleAxis(inputLookHorizontal * 220f * Time.deltaTime, Vector3.up);
+            // }
+            // else
+            //     characterRotationLocalToPlatform *= Quaternion.AngleAxis(inputLookHorizontal * 2f, Vector3.up);
+        }
+
+        private void RespectUserInput()
+        {
+            ProcessMoveInput();
+            inputJump = false;
         }
 
         private void ProcessMoveInput()
@@ -300,7 +314,6 @@ namespace JanSharp
 
         private bool inputJump;
         private float inputLookHorizontal;
-        private float accumulatedInputLookHorizontal;
         private float inputMoveHorizontal;
         private float inputMoveVertical;
 
@@ -308,11 +321,6 @@ namespace JanSharp
         {
             if (value)
                 inputJump = true;
-        }
-
-        public void CustomUpdate()
-        {
-            accumulatedInputLookHorizontal += inputLookHorizontal;
         }
 
         public override void InputLookHorizontal(float value, UdonInputEventArgs args)
