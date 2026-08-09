@@ -115,11 +115,11 @@ namespace JanSharp
             if (localStation == newStation)
                 return;
             localStation = newStation;
-            if (isAttached)
-            {
-                // TODO: Scream.
+            if (!isAttached)
                 return;
-            }
+            Transform currentAttachedPlatform = attachedPlatform;
+            character.Detach();
+            TryAttach(currentAttachedPlatform);
         }
 
         public AttachablePlatform GetPlatformFromId(uint id)

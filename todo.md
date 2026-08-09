@@ -12,9 +12,9 @@
 - [x] character controller jump and gravity doesn't seem to match VRChat - it does match, it was just broken due to still using deltaTime in FixedUpdate
 - [x] jump velocity seems weird, it's like faster than the platform initially, but then you fall backwards and land further back. It's very weird
 - [ ] TeleportPlayerIntoStation does not actually function properly for immobile stations, which is what the system is using now
-- [ ] half body support, somehow
+- [x] half body support, somehow
   - [x] a user toggle between a seated (full body) and a non seated (half body) station
-    - [ ] handle being attached while switching
+    - [x] handle being attached while switching
 - [ ] desktop support
   - [x] make it use a non seated station
   - [ ] might just need to work around the 180 degree rotation limit, other than that could probably behave very very similarly to full body
@@ -26,6 +26,10 @@
 - [ ] sometimes when a remote player gets attached they do a 360
 - [ ] option for snap turning rather than smooth as it is now
 - [x] disable character controller game object while not in use
+- [ ] custom animation controller?
+  - [ ] desktop?
+  - [ ] half body?
+  - [ ] full body?
 
 - [x] detection of platforms
   - [x] collider with a specific layer closely under the player (GetPosition())
