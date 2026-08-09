@@ -24,7 +24,6 @@
 - [x] fix remote attachment, remote players should always be standing straight up in world space, not tilting with the platform
 - [ ] remove RemoteSmoothingUI, and remove reference to JanSharp.GenericValueEditor from non Dev assembly definition
 - [ ] sometimes when a remote player gets attached they do a 360
-- [ ] option for half body, which makes it use a non seated station
 - [ ] option for snap turning rather than smooth as it is now
 
 - [x] detection of platforms
