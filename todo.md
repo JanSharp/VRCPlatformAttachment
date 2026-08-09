@@ -36,6 +36,8 @@
   - [ ] it takes 12 turns to do a 360
   - [ ] it actuates at 0.5
   - [ ] unknown when exactly it "releases" in VRChat but I'll make mine release at 0.475
+- [ ] ask somebody with high frame rate in VR in half body if the velocity application works properly - if it's fine in fixed update as it is now or if it must be moved to update
+  - [ ] could also test this by intentionally not setting it every fixed update and seeing how it behaves
 
 - [x] detection of platforms
   - [x] collider with a specific layer closely under the player (GetPosition())

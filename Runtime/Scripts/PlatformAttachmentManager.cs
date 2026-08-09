@@ -27,6 +27,7 @@ namespace JanSharp
             set
             {
                 isInFullBody = value;
+                UpdateApplyVelocityWhileAttached();
                 if (localAttachedPlayerSync == null)
                     return;
                 FetchAppropriateLocalStation();
@@ -86,6 +87,7 @@ namespace JanSharp
             localPlayer = Networking.LocalPlayer;
             isInVR = localPlayer.IsUserInVR();
             isInFullBody = isInVR;
+            UpdateApplyVelocityWhileAttached();
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
             totalSwData = StopwatchUtil.CreateDataContainer();
             getTrackingDataSwData = StopwatchUtil.CreateDataContainer();
@@ -93,6 +95,11 @@ namespace JanSharp
             tpSwData = StopwatchUtil.CreateDataContainer();
             useStationSwData = StopwatchUtil.CreateDataContainer();
 #endif
+        }
+
+        private void UpdateApplyVelocityWhileAttached()
+        {
+            character.applyVelocityWhileAttached = isInVR && !isInFullBody;
         }
 
         public void SetLocalAttachedPlayerSync(AttachedRemotePlayer localAttachedPlayerSync)

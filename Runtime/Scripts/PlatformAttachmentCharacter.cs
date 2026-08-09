@@ -28,6 +28,7 @@ namespace JanSharp
 
         private bool isInVR;
         private VRCPlayerApi localPlayer;
+        [System.NonSerialized] public bool applyVelocityWhileAttached;
         private AttachedRemotePlayer localAttachedPlayerSync;
         private VRC.SDK3.Components.VRCStation localStation;
         private Transform localStationPlayerPosition;
@@ -340,6 +341,11 @@ namespace JanSharp
 #endif
 
             // TODO: Apply angular velocity.
+
+            // For half body with the non seated station this actually makes the avatar play movement locomotion.
+            // For full body with the seated station, this makes tracking get locked up, very bad.
+            if (applyVelocityWhileAttached)
+                localPlayer.SetVelocity(movement / fixedDeltaTime);
         }
 
         private void ApplyMovementToStation()
