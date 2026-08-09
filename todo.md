@@ -30,6 +30,12 @@
   - [ ] desktop?
   - [ ] half body?
   - [ ] full body?
+- [ ] fix attaching immediately after detaching when walking off and stepping down from a moving platform
+- [ ] jumping onto a backwards tilted wall which is moving towards you moves you up and over the wall
+- [ ] comfort turning
+  - [ ] it takes 12 turns to do a 360
+  - [ ] it actuates at 0.5
+  - [ ] unknown when exactly it "releases" in VRChat but I'll make mine release at 0.475
 
 - [x] detection of platforms
   - [x] collider with a specific layer closely under the player (GetPosition())

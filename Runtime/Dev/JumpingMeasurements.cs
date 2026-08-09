@@ -118,7 +118,8 @@ namespace JanSharp
             accumulatedLookHorizontalValueMin = Mathf.Min(accumulatedLookHorizontalValueMin, accumulatedLookHorizontalValue);
             accumulatedLookHorizontalValueMax = Mathf.Max(accumulatedLookHorizontalValueMax, accumulatedLookHorizontalValue);
             lookInfoLabel.Label = $"Horizontal Look:\n"
-                + $"Current: {accumulatedLookHorizontalValue}\n"
+                + $"Current Raw: {inputLookHorizontal}\n"
+                + $"Accumulative: {accumulatedLookHorizontalValue}\n"
                 + $"Min: {accumulatedLookHorizontalValueMin}\n"
                 + $"Max: {accumulatedLookHorizontalValueMax}";
 
