@@ -11,6 +11,7 @@ namespace JanSharp
     {
 #if PLATFORM_ATTACHMENT_DEBUG
         [HideInInspector][SerializeField][SingletonReference] private QuickDebugUI qd;
+        [HideInInspector][SerializeField][SingletonReference] private RemoteSmoothingUI remoteSmoothing;
 #endif
         [HideInInspector][SerializeField][SingletonReference] private PlatformAttachmentManager manager;
         [HideInInspector][SerializeField][SingletonReference] private UpdateManager updateManager;
@@ -32,6 +33,11 @@ namespace JanSharp
         private Transform localStationPlayerPosition;
 
         private const float GravityConstant = -9.81f;
+#if PLATFORM_ATTACHMENT_DEBUG
+        private float AirControlMultiplier => remoteSmoothing.AirControlMultiplier;
+#else
+        private const float AirControlMultiplier = 4f;
+#endif
 
         private Vector3 velocity;
         /// <summary>
@@ -246,6 +252,25 @@ namespace JanSharp
             inputJump = false;
         }
 
+        private float ApplyAirControl(float currentVelocity, float inputVelocity)
+        {
+            if (inputVelocity == 0f)
+                return currentVelocity;
+            // This moves velocity towards inputVelocity, capped at inputVelocity, however if currentVelocity
+            // is greater than inputVelocity and the input is not actively trying to reduce it, currentVelocity
+            // will stay above inputVelocity.
+            if (inputVelocity > 0f)
+            {
+                float max = Mathf.Max(currentVelocity, inputVelocity);
+                return Mathf.Min(max, currentVelocity + inputVelocity * Time.fixedDeltaTime * AirControlMultiplier);
+            }
+            else
+            {
+                float min = Mathf.Min(currentVelocity, inputVelocity);
+                return Mathf.Max(min, currentVelocity + inputVelocity * Time.fixedDeltaTime * AirControlMultiplier);
+            }
+        }
+
         private void ProcessMoveInput()
         {
             var head = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
@@ -255,19 +280,25 @@ namespace JanSharp
                 0f,
                 inputMoveVertical * localPlayer.GetRunSpeed());
 
+            Vector3 platformMovement = characterTransform.position - characterPositionBeforeMovementThisFrame;
+            float fixedDeltaTime = Time.fixedDeltaTime;
+
             Vector3 newVelocity;
             if (!isGrounded)
             {
                 newVelocity = new Vector3(
-                    Mathf.Lerp(velocity.x, inputVelocity.x, Time.fixedDeltaTime), // TODO: Look at lerp smoothing from Freya.
-                    velocity.y + GravityConstant * localPlayer.GetGravityStrength() * Time.fixedDeltaTime,
-                    Mathf.Lerp(velocity.z, inputVelocity.z, Time.fixedDeltaTime));
+                    ApplyAirControl(velocity.x, inputVelocity.x),
+                    velocity.y + GravityConstant * localPlayer.GetGravityStrength() * fixedDeltaTime,
+                    ApplyAirControl(velocity.z, inputVelocity.z));
             }
             else
             {
                 if (inputJump)
                 {
-                    newVelocity = velocity;
+                    // Platform movement has already been applied and will be added to the total velocity in
+                    // the end again. Must remove it here otherwise it would get counted twice, making the
+                    // player jump towards the direction the platform is moving.
+                    newVelocity = velocity - platformMovement / fixedDeltaTime;
                     newVelocity.y = localPlayer.GetJumpImpulse();
                 }
                 else if (Physics.Raycast(
@@ -288,10 +319,13 @@ namespace JanSharp
                 }
             }
 
-            characterController.Move(newVelocity * Time.fixedDeltaTime);
-            Vector3 actualVelocity = (characterTransform.position - characterPositionBeforeMovementThisFrame) / Time.fixedDeltaTime;
-            velocity = actualVelocity.magnitude > newVelocity.magnitude
-                ? actualVelocity.normalized * newVelocity.magnitude
+            Vector3 movement = newVelocity * fixedDeltaTime;
+            float expectedTotalSpeed = (platformMovement + movement).magnitude / fixedDeltaTime;
+            characterController.Move(movement);
+            Vector3 actualVelocity = (characterTransform.position - characterPositionBeforeMovementThisFrame) / fixedDeltaTime;
+            // Cap velocity at the expected total speed to prevent getting flung off the platform.
+            velocity = actualVelocity.magnitude > expectedTotalSpeed
+                ? actualVelocity.normalized * expectedTotalSpeed
                 : actualVelocity;
             isGrounded = characterController.isGrounded;
 

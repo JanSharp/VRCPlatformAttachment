@@ -13,6 +13,7 @@ namespace JanSharp
         public float InterpolationDuration = 0.15f;
         public float DesiredVelocityMultiplier = 0.4f;
         public float SyncLoopInterval = 0.3f;
+        public float AirControlMultiplier = 4f;
 
         private void Start()
         {
@@ -21,6 +22,7 @@ namespace JanSharp
                 nameof(InterpolationDuration),
                 nameof(DesiredVelocityMultiplier),
                 nameof(SyncLoopInterval),
+                nameof(AirControlMultiplier),
             };
             WidgetData[] widgets = new WidgetData[fieldNames.Length];
             for (int i = 0; i < fieldNames.Length; i++)

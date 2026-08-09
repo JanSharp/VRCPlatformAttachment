@@ -23302,6 +23302,11 @@ PrefabInstance:
       objectReference: {fileID: 1553085040}
     - target: {fileID: 2963570844868525092, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
         type: 3}
+      propertyPath: remoteSmoothing
+      value: 
+      objectReference: {fileID: 1489483535}
+    - target: {fileID: 2963570844868525092, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
+        type: 3}
       propertyPath: serializationData.Prefab
       value: 
       objectReference: {fileID: 2963570844868525092, guid: bbe525fe8f53b070a9a6a76da1cf85ad,

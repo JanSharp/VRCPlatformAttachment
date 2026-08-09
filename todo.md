@@ -10,7 +10,7 @@
 - [x] ~~testing with 2 people in desktop works just fine, in live session with 40+ people it broke~~ idk what this was even referencing
 - [x] the station approach requires implementing gravity, velocity and jumping manually
 - [x] character controller jump and gravity doesn't seem to match VRChat - it does match, it was just broken due to still using deltaTime in FixedUpdate
-- [ ] jump velocity seems weird, it's like faster than the platform initially, but then you fall backwards and land further back. It's very weird
+- [x] jump velocity seems weird, it's like faster than the platform initially, but then you fall backwards and land further back. It's very weird
 - [ ] TeleportPlayerIntoStation does not actually function properly for immobile stations, which is what the system is using now
 - [ ] half body support, somehow
   - [x] a user toggle between a seated (full body) and a non seated (half body) station
@@ -25,6 +25,7 @@
 - [ ] remove RemoteSmoothingUI, and remove reference to JanSharp.GenericValueEditor from non Dev assembly definition
 - [ ] sometimes when a remote player gets attached they do a 360
 - [ ] option for snap turning rather than smooth as it is now
+- [ ] disable character controller game object while not in use
 
 - [x] detection of platforms
   - [x] collider with a specific layer closely under the player (GetPosition())
