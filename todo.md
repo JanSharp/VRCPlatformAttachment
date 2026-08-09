@@ -25,7 +25,7 @@
 - [ ] remove RemoteSmoothingUI, and remove reference to JanSharp.GenericValueEditor from non Dev assembly definition
 - [ ] sometimes when a remote player gets attached they do a 360
 - [ ] option for snap turning rather than smooth as it is now
-- [ ] disable character controller game object while not in use
+- [x] disable character controller game object while not in use
 
 - [x] detection of platforms
   - [x] collider with a specific layer closely under the player (GetPosition())

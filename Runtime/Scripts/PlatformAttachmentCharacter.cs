@@ -96,6 +96,7 @@ namespace JanSharp
             stationRotationLocalToCharacter = Quaternion.Inverse(playerRotation) * localStationPlayerPosition.rotation;
 
             inputJump = false;
+            characterController.gameObject.SetActive(true);
             updateManager.Register(this);
         }
 
@@ -114,6 +115,7 @@ namespace JanSharp
         private void Detach()
         {
             updateManager.Deregister(this);
+            characterController.gameObject.SetActive(false);
             manager.TeleportPlayerOutOfStation();
             localPlayer.SetVelocity(velocity);
             manager.Detach();
