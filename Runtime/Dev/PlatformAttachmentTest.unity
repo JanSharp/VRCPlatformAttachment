@@ -22901,6 +22901,11 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 2963570844868525092, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
         type: 3}
+    - target: {fileID: 2963570844868525092, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
+        type: 3}
+      propertyPath: playerCollisionMask.m_Bits
+      value: 4294183383
+      objectReference: {fileID: 0}
     - target: {fileID: 3447032608587032466, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
         type: 3}
       propertyPath: m_LocalPosition.x
