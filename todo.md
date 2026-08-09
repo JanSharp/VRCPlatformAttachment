@@ -9,7 +9,7 @@
   - By using stations this luckily becomes a non issue. Legs are no longer drifting behind, and moving around plays the walking animation. Like this is genuine luck
 - [x] ~~testing with 2 people in desktop works just fine, in live session with 40+ people it broke~~ idk what this was even referencing
 - [x] the station approach requires implementing gravity, velocity and jumping manually
-- [ ] character controller jump and gravity doesn't seem to match VRChat
+- [x] character controller jump and gravity doesn't seem to match VRChat - it does match, it was just broken due to still using deltaTime in FixedUpdate
 - [ ] jump velocity seems weird, it's like faster than the platform initially, but then you fall backwards and land further back. It's very weird
 - [ ] TeleportPlayerIntoStation does not actually function properly for immobile stations, which is what the system is using now
 - [ ] half body support, somehow
