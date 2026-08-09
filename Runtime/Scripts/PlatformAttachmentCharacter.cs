@@ -20,7 +20,7 @@ namespace JanSharp
         [System.NonSerialized] public int customUpdateInternalIndex;
         public CharacterController characterController;
         public Transform characterTransform;
-        public LayerMask playerCollisionMask;
+        public LayerMask playerCollisionMask; // TODO: Populate at build time.
 
         private Transform platform;
         private AttachablePlatform platformScript;
