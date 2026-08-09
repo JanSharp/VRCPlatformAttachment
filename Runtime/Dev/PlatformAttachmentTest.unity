@@ -3603,6 +3603,12 @@ Transform:
   - {fileID: 1649028343}
   m_Father: {fileID: 920535517}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &589668997 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7957842036014743589, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
+    type: 3}
+  m_PrefabInstance: {fileID: 6517345965389269622}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &612712653
 GameObject:
   m_ObjectHideFlags: 0
@@ -10379,7 +10385,7 @@ PrefabInstance:
     - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
         type: 3}
       propertyPath: NetworkIDs.Array.size
-      value: 114
+      value: 116
       objectReference: {fileID: 0}
     - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
         type: 3}
@@ -10960,6 +10966,16 @@ PrefabInstance:
         type: 3}
       propertyPath: NetworkIDs.Array.data[113].ID
       value: 124
+      objectReference: {fileID: 0}
+    - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
+        type: 3}
+      propertyPath: NetworkIDs.Array.data[114].ID
+      value: 125
+      objectReference: {fileID: 0}
+    - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
+        type: 3}
+      propertyPath: NetworkIDs.Array.data[115].ID
+      value: 126
       objectReference: {fileID: 0}
     - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
         type: 3}
@@ -11938,6 +11954,16 @@ PrefabInstance:
       objectReference: {fileID: 437168268}
     - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
         type: 3}
+      propertyPath: NetworkIDs.Array.data[114].gameObject
+      value: 
+      objectReference: {fileID: 1486554204}
+    - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
+        type: 3}
+      propertyPath: NetworkIDs.Array.data[115].gameObject
+      value: 
+      objectReference: {fileID: 589668997}
+    - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
+        type: 3}
       propertyPath: NetworkIDs.Array.data[0].SerializedTypeNames.Array.size
       value: 1
       objectReference: {fileID: 0}
@@ -12504,6 +12530,16 @@ PrefabInstance:
     - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
         type: 3}
       propertyPath: NetworkIDs.Array.data[113].SerializedTypeNames.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
+        type: 3}
+      propertyPath: NetworkIDs.Array.data[114].SerializedTypeNames.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
+        type: 3}
+      propertyPath: NetworkIDs.Array.data[115].SerializedTypeNames.Array.size
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
@@ -13091,6 +13127,16 @@ PrefabInstance:
       propertyPath: NetworkIDs.Array.data[113].SerializedTypeNames.Array.data[0]
       value: VRC.Udon.UdonBehaviour
       objectReference: {fileID: 0}
+    - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
+        type: 3}
+      propertyPath: NetworkIDs.Array.data[114].SerializedTypeNames.Array.data[0]
+      value: VRC.Udon.UdonBehaviour
+      objectReference: {fileID: 0}
+    - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
+        type: 3}
+      propertyPath: NetworkIDs.Array.data[115].SerializedTypeNames.Array.data[0]
+      value: VRC.Udon.UdonBehaviour
+      objectReference: {fileID: 0}
     - target: {fileID: 8464459589408506562, guid: 8894fa7e4588a5c4fab98453e558847d,
         type: 3}
       propertyPath: serializedProgramAsset
@@ -13205,6 +13251,12 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 2, z: 1}
   m_Center: {x: 0, y: 1, z: 2}
+--- !u!1 &1486554204 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5437283990176550031, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
+    type: 3}
+  m_PrefabInstance: {fileID: 6517345965389269622}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1489483533 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8314114350164068975, guid: 2de4fe20374742decb465a3d8fd49063,
@@ -23290,6 +23342,12 @@ PrefabInstance:
       propertyPath: serializedProgramAsset
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 1726473910118231861, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
+        type: 3}
+      propertyPath: serializationData.Prefab
+      value: 
+      objectReference: {fileID: 1726473910118231861, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
+        type: 3}
     - target: {fileID: 2963570844868525092, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
         type: 3}
       propertyPath: qd
@@ -23311,6 +23369,11 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 2963570844868525092, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
         type: 3}
+    - target: {fileID: 3145993357756214047, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
+        type: 3}
+      propertyPath: _syncMethod
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 3447032608587032466, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -23371,10 +23434,21 @@ PrefabInstance:
       propertyPath: serializedProgramAsset
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 8475346728030644444, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
+        type: 3}
+      propertyPath: serializationData.Prefab
+      value: 
+      objectReference: {fileID: 8475346728030644444, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
+        type: 3}
     - target: {fileID: 8602534520256819705, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
         type: 3}
       propertyPath: m_Name
       value: PlatformAttachmentManager
+      objectReference: {fileID: 0}
+    - target: {fileID: 8745320236258558971, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
+        type: 3}
+      propertyPath: _syncMethod
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8976526391541924555, guid: bbe525fe8f53b070a9a6a76da1cf85ad,
         type: 3}

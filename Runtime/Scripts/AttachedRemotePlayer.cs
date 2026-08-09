@@ -65,11 +65,6 @@ namespace JanSharp
 
         #region Local
 
-        public override void OnStationExited(VRCPlayerApi player)
-        {
-            // TODO: Do something.
-        }
-
         public void BeginSyncLoop(AttachablePlatform attachedPlatform)
         {
 #if PLATFORM_ATTACHMENT_DEBUG

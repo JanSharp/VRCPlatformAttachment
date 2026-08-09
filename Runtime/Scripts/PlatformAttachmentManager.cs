@@ -211,10 +211,10 @@ namespace JanSharp
                 return;
             if (attachablePlatform.id == 0u)
                 attachablePlatform.id = GetIdFromPlatform(attachablePlatform);
-            isAttached = true;
             attachedPlatform = platform;
             attachedAttachablePlatform = attachablePlatform;
             character.Attach(attachablePlatform);
+            isAttached = true;
             if (localAttachedPlayerSync != null)
                 localAttachedPlayerSync.BeginSyncLoop(attachablePlatform);
         }
@@ -232,16 +232,25 @@ namespace JanSharp
                 localAttachedPlayerSync.ChangeSyncedAttachedPlatform(attachablePlatform);
         }
 
-        public void Detach()
+        public void OnCharacterDetached()
         {
 #if PLATFORM_ATTACHMENT_DEBUG
-            Debug.Log($"[PlatformAttachmentDebug] Manager  {nameof(Detach)}");
+            Debug.Log($"[PlatformAttachmentDebug] Manager  {nameof(OnCharacterDetached)}");
 #endif
             isAttached = false;
             attachedPlatform = null;
             attachedAttachablePlatform = null;
             if (localAttachedPlayerSync != null)
                 localAttachedPlayerSync.StopSyncLoop();
+        }
+
+        public void OnLocalPlayerStationExited()
+        {
+#if PLATFORM_ATTACHMENT_DEBUG
+            Debug.Log($"[PlatformAttachmentDebug] Manager  {nameof(OnLocalPlayerStationExited)}");
+#endif
+            if (isAttached)
+                character.Detach(skipMovingLocalPlayer: true);
         }
 
         /// <summary>Handles quaternions where their forward vector is pointing straight up or down.</summary>

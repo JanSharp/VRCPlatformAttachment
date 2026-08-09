@@ -112,13 +112,15 @@ namespace JanSharp
             manager.SwitchAttachedPlatform(platformScript);
         }
 
-        private void Detach()
+        public void Detach(bool skipMovingLocalPlayer = false)
         {
             updateManager.Deregister(this);
             characterController.gameObject.SetActive(false);
+            manager.OnCharacterDetached();
+            if (skipMovingLocalPlayer)
+                return;
             manager.TeleportPlayerOutOfStation();
             localPlayer.SetVelocity(velocity);
-            manager.Detach();
         }
 
         public void UpdateController()
