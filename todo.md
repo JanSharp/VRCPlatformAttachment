@@ -32,10 +32,11 @@
   - [ ] full body?
 - [ ] fix attaching immediately after detaching when walking off and stepping down from a moving platform
 - [ ] jumping onto a backwards tilted wall which is moving towards you moves you up and over the wall
-- [ ] comfort turning
-  - [ ] it takes 12 turns to do a 360
-  - [ ] it actuates at 0.5
-  - [ ] unknown when exactly it "releases" in VRChat but I'll make mine release at 0.475
+- [x] comfort turning
+  - [x] it takes 12 turns to do a 360
+  - [x] it actuates at 0.5
+  - [x] unknown when exactly it "releases" in VRChat but I'll make mine release at 0.475
+  - [ ] maybe auto detect usage of comfort turning by looking for multiple jumps in player rotation by 360/12 degrees
 - [ ] ask somebody with high frame rate in VR in half body if the velocity application works properly - if it's fine in fixed update as it is now or if it must be moved to update
   - [ ] could also test this by intentionally not setting it every fixed update and seeing how it behaves
 

@@ -40,6 +40,15 @@ namespace JanSharp
         private const float AirControlMultiplier = 4f;
 #endif
 
+        private bool useComfortTurning;
+        /// <summary>
+        /// <para>Either a <c>-1f</c>, <c>0f</c> or <c>1f</c>.</para>
+        /// </summary>
+        private float comfortTurningActivelyActuatedDirection = 0f;
+        private const float ComfortTurnActuationPoint = 0.5f;
+        private const float ComfortTurnReleasePoint = 0.475f;
+        private const float ComfortTurnAngle = 360f / 12f;
+
         private Vector3 velocity;
         /// <summary>
         /// <para>Always around axis <see cref="Vector3.up"/>.</para>
@@ -84,6 +93,7 @@ namespace JanSharp
             this.platformScript = platformScript;
             characterTransform.position = playerPosition;
             prevPlatformRotation = PlatformAttachmentManager.ProjectOntoYPlane(platform.rotation);
+            comfortTurningActivelyActuatedDirection = 0;
             velocity = localPlayer.GetVelocity();
             angularVelocityAngles = 0f;
             isGrounded = false;
@@ -231,8 +241,11 @@ namespace JanSharp
 
         public void CustomUpdate()
         {
-            if (inputLookHorizontal == 0)
+            if (inputLookHorizontal == 0f)
+            {
+                comfortTurningActivelyActuatedDirection = 0f;
                 return;
+            }
             ProcessLookInput();
             ApplyMovementToStation();
         }
@@ -240,6 +253,12 @@ namespace JanSharp
         private void ProcessLookInput()
         {
             // TODO: Maybe make this rotate around the player's head instead, though the offset math for that is convoluted.
+
+            if (useComfortTurning)
+            {
+                ProcessComfortTurningLookInput();
+                return;
+            }
 
             // if (isInVR)
             // {
@@ -249,6 +268,40 @@ namespace JanSharp
             // }
             // else
             //     characterRotationLocalToPlatform *= Quaternion.AngleAxis(inputLookHorizontal * 2f, Vector3.up);
+        }
+
+        public void SetUseComfortTurning(bool useComfortTurning)
+        {
+            this.useComfortTurning = useComfortTurning;
+            if (!useComfortTurning)
+                comfortTurningActivelyActuatedDirection = 0f;
+        }
+
+        private void ProcessComfortTurningLookInput()
+        {
+            if (comfortTurningActivelyActuatedDirection != 0f)
+            {
+                // These do not return when setting it to 0 to detect and support the inputLookHorizontal value
+                // going from one actuated side to the other within a single frame.
+                if (comfortTurningActivelyActuatedDirection > 0f)
+                {
+                    if (inputLookHorizontal < ComfortTurnReleasePoint)
+                        comfortTurningActivelyActuatedDirection = 0f;
+                    else
+                        return;
+                }
+                else // comfortTurningIsActuatedDirection < 0f
+                {
+                    if (inputLookHorizontal > -ComfortTurnReleasePoint)
+                        comfortTurningActivelyActuatedDirection = 0f;
+                    else
+                        return;
+                }
+            }
+            if (Mathf.Abs(inputLookHorizontal) < ComfortTurnActuationPoint)
+                return;
+            comfortTurningActivelyActuatedDirection = Mathf.Sign(inputLookHorizontal);
+            characterRotationLocalToPlatform *= Quaternion.AngleAxis(comfortTurningActivelyActuatedDirection * ComfortTurnAngle, Vector3.up);
         }
 
         private void RespectUserInput()

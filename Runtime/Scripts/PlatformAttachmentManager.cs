@@ -37,6 +37,20 @@ namespace JanSharp
         public void SetIsInHalfBody() => IsInFullBody = false;
         public void ToggleIsInFullBody() => IsInFullBody = !IsInFullBody;
 
+        private bool useComfortTurning = false;
+        public bool UseComfortTurning
+        {
+            get => isInVR && useComfortTurning;
+            set
+            {
+                useComfortTurning = value;
+                UpdateCharacterUseComfortTurning();
+            }
+        }
+        public void EnableComfortTurning() => UseComfortTurning = true;
+        public void DisableComfortTurning() => UseComfortTurning = false;
+        public void ToggleComfortTurning() => UseComfortTurning = !UseComfortTurning;
+
         private VRCPlayerApi localPlayer;
         private AttachedRemotePlayer localAttachedPlayerSync;
         private VRC.SDK3.Components.VRCStation localStation;
@@ -87,7 +101,11 @@ namespace JanSharp
             localPlayer = Networking.LocalPlayer;
             isInVR = localPlayer.IsUserInVR();
             isInFullBody = isInVR;
+            // Calling these on Start in case their value got changed by another script prior to our Start,
+            // in which case the character must be informed of said values since by default isInVR is false,
+            // so the character specifically was not informed of any change in settings.
             UpdateApplyVelocityWhileAttached();
+            UpdateCharacterUseComfortTurning();
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
             totalSwData = StopwatchUtil.CreateDataContainer();
             getTrackingDataSwData = StopwatchUtil.CreateDataContainer();
@@ -97,10 +115,8 @@ namespace JanSharp
 #endif
         }
 
-        private void UpdateApplyVelocityWhileAttached()
-        {
-            character.applyVelocityWhileAttached = isInVR && !isInFullBody;
-        }
+        private void UpdateApplyVelocityWhileAttached() => character.applyVelocityWhileAttached = isInVR && !isInFullBody;
+        private void UpdateCharacterUseComfortTurning() => character.SetUseComfortTurning(isInVR && useComfortTurning);
 
         public void SetLocalAttachedPlayerSync(AttachedRemotePlayer localAttachedPlayerSync)
         {
