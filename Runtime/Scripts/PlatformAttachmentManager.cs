@@ -16,6 +16,26 @@ namespace JanSharp
         public Transform originDebug;
         public Transform avatarRootDebug;
 
+        private bool isInVR;
+        private bool isInFullBody = true;
+        /// <summary>
+        /// <para>Always <see langword="false"/> on desktop.</para>
+        /// </summary>
+        public bool IsInFullBody
+        {
+            get => isInVR && isInFullBody;
+            set
+            {
+                isInFullBody = value;
+                if (localAttachedPlayerSync == null)
+                    return;
+                FetchAppropriateLocalStation();
+            }
+        }
+        public void SetIsInFullBody() => IsInFullBody = true;
+        public void SetIsInHalfBody() => IsInFullBody = false;
+        public void ToggleIsInFullBody() => IsInFullBody = !IsInFullBody;
+
         private VRCPlayerApi localPlayer;
         private AttachedRemotePlayer localAttachedPlayerSync;
         private VRC.SDK3.Components.VRCStation localStation;
@@ -64,6 +84,8 @@ namespace JanSharp
         private void Start()
         {
             localPlayer = Networking.LocalPlayer;
+            isInVR = localPlayer.IsUserInVR();
+            isInFullBody = isInVR;
 #if PLATFORM_ATTACHMENT_DEBUG || PLATFORM_ATTACHMENT_STOPWATCH
             totalSwData = StopwatchUtil.CreateDataContainer();
             getTrackingDataSwData = StopwatchUtil.CreateDataContainer();
@@ -78,11 +100,26 @@ namespace JanSharp
             if (localPlayer == null)
                 Start();
             this.localAttachedPlayerSync = localAttachedPlayerSync;
-            localStation = localAttachedPlayerSync.station;
+            FetchAppropriateLocalStation();
             localStationPlayerPosition = localAttachedPlayerSync.stationPlayerPosition;
             character.SetLocalAttachedPlayerSync(localAttachedPlayerSync);
             if (isAttached)
                 localAttachedPlayerSync.BeginSyncLoop(attachedAttachablePlatform);
+        }
+
+        private void FetchAppropriateLocalStation()
+        {
+            VRC.SDK3.Components.VRCStation newStation = IsInFullBody
+                ? localAttachedPlayerSync.fullBodyStation
+                : localAttachedPlayerSync.desktopAndHalfBodyStation;
+            if (localStation == newStation)
+                return;
+            localStation = newStation;
+            if (isAttached)
+            {
+                // TODO: Scream.
+                return;
+            }
         }
 
         public AttachablePlatform GetPlatformFromId(uint id)

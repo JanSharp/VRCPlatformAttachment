@@ -13,9 +13,10 @@
 - [ ] jump velocity seems weird, it's like faster than the platform initially, but then you fall backwards and land further back. It's very weird
 - [ ] TeleportPlayerIntoStation does not actually function properly for immobile stations, which is what the system is using now
 - [ ] half body support, somehow
-  - [ ] a user toggle between a seated (full body) and a non seated (half body) station
+  - [x] a user toggle between a seated (full body) and a non seated (half body) station
+    - [ ] handle being attached while switching
 - [ ] desktop support
-  - [ ] make it use a non seated station
+  - [x] make it use a non seated station
   - [ ] might just need to work around the 180 degree rotation limit, other than that could probably behave very very similarly to full body
 - [x] being in a station causes jitter of the world around you, including the platform you are attached to, even though the station is perfectly aligned with the platform
   - [x] the solution is to only move platforms in FixedUpdate, or set animators to Animate Physics (which is comparable to telling the Animator to run in FixedUpdate), because for whatever dumb reason, players in immobile stations only get moved in FixedUpdate. It makes no sense whatsoever, and thanks to that the world around you ends up jittering. But at least not the object you are standing on anymore

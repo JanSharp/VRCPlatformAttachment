@@ -18,7 +18,9 @@ namespace JanSharp
         [HideInInspector][SerializeField][SingletonReference] private RemoteSmoothingUI remoteSmoothing;
 #endif
 
-        public VRC.SDK3.Components.VRCStation station;
+        // Must be 2 separate stations because we cannot change the seated property of stations at runtime.
+        public VRC.SDK3.Components.VRCStation desktopAndHalfBodyStation;
+        public VRC.SDK3.Components.VRCStation fullBodyStation;
         public Transform stationPlayerPosition;
 
 #if PLATFORM_ATTACHMENT_DEBUG
@@ -55,7 +57,8 @@ namespace JanSharp
 #endif
             player = Networking.GetOwner(this.gameObject);
             bool isLocal = player.isLocal;
-            station.PlayerMobility = VRCStation.Mobility.ImmobilizeForVehicle;
+            desktopAndHalfBodyStation.PlayerMobility = VRCStation.Mobility.ImmobilizeForVehicle;
+            fullBodyStation.PlayerMobility = VRCStation.Mobility.ImmobilizeForVehicle;
             if (isLocal)
                 manager.SetLocalAttachedPlayerSync(this);
         }

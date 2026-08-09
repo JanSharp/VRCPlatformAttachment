@@ -167,12 +167,13 @@ MonoBehaviour:
     SerializationNodes: []
   _udonSharpBackingUdonBehaviour: {fileID: 19149858174073321}
   qd: {fileID: 0}
-  manager: {fileID: 0}
+  manager: {fileID: 1278943526573141291}
+  updateManager: {fileID: 0}
   characterController: {fileID: 2778958458616703745}
   characterTransform: {fileID: 3150938241344601841}
   playerCollisionMask:
     serializedVersion: 2
-    m_Bits: 2049
+    m_Bits: 4294183383
 --- !u!114 &19149858174073321
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -230,6 +231,80 @@ Transform:
   - {fileID: 2267100481505029867}
   m_Father: {fileID: 5667702059926478589}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &5437283990176550031
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2731027227889837850}
+  - component: {fileID: 3295079033031707104}
+  - component: {fileID: 3976690750822058272}
+  m_Layer: 0
+  m_Name: DesktopAndHalfBodyStation
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2731027227889837850
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5437283990176550031}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5667702059926478589}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3295079033031707104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5437283990176550031}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 1073094524, guid: 661092b4961be7145bfbe56e1e62337b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  PlayerMobility: 2
+  canUseStationFromStation: 1
+  animatorController: {fileID: 0}
+  disableStationExit: 1
+  seated: 0
+  stationEnterPlayerLocation: {fileID: 7929831348944266713}
+  stationExitPlayerLocation: {fileID: 7929831348944266713}
+  controlsObject: {fileID: 0}
+--- !u!65 &3976690750822058272
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5437283990176550031}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 0
+  serializedVersion: 3
+  m_Size: {x: 0, y: 0, z: 0}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &6706276041633235003
 GameObject:
   m_ObjectHideFlags: 0
@@ -243,7 +318,7 @@ GameObject:
   - component: {fileID: 4002023500600775146}
   m_Layer: 2
   m_Name: NaturalGripPreventionCollider
-  m_TagString: Untagged
+  m_TagString: EditorOnly
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -406,7 +481,7 @@ GameObject:
   - component: {fileID: 1091528657903755246}
   - component: {fileID: 7139631285337547552}
   m_Layer: 0
-  m_Name: Station
+  m_Name: FullBodyStation
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -464,7 +539,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Size: {x: 0, y: 0, z: 0}
   m_Center: {x: 0, y: 0, z: 0}
@@ -593,6 +668,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 2731027227889837850}
   - {fileID: 659484652484051423}
   - {fileID: 7929831348944266713}
   m_Father: {fileID: 3447032608587032466}
@@ -632,9 +708,11 @@ MonoBehaviour:
     SerializationNodes: []
   _udonSharpBackingUdonBehaviour: {fileID: 1497281033487823964}
   manager: {fileID: 0}
-  interpolation: {fileID: 0}
+  updateManager: {fileID: 0}
   qd: {fileID: 0}
-  station: {fileID: 1091528657903755246}
+  remoteSmoothing: {fileID: 0}
+  desktopAndHalfBodyStation: {fileID: 3295079033031707104}
+  fullBodyStation: {fileID: 1091528657903755246}
   stationPlayerPosition: {fileID: 7929831348944266713}
 --- !u!114 &1497281033487823964
 MonoBehaviour:

@@ -65,7 +65,7 @@ namespace JanSharp
         public void SetLocalAttachedPlayerSync(AttachedRemotePlayer localAttachedPlayerSync)
         {
             this.localAttachedPlayerSync = localAttachedPlayerSync;
-            localStation = localAttachedPlayerSync.station;
+            localStation = localAttachedPlayerSync.fullBodyStation;
             localStationPlayerPosition = localAttachedPlayerSync.stationPlayerPosition;
         }
 
