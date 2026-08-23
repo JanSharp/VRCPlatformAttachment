@@ -3,10 +3,10 @@ using UnityEngine;
 
 namespace JanSharp
 {
-    [InitializeOnLoad]
     public static class PlatformAttachmentCharacterOnBuild
     {
-        static PlatformAttachmentCharacterOnBuild()
+        [OrderedInitializeOnLoad]
+        private static void OnAssemblyLoad()
         {
             OnBuildUtil.RegisterType<PlatformAttachmentCharacter>(OnBuild);
         }
